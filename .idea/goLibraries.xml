@@ -4,6 +4,7 @@
     <option name="urls">
       <list>
         <option value="file://$PROJECT_DIR$/../go" />
+        <option value="file://$PROJECT_DIR$/../../../.." />
       </list>
     </option>
   </component>
