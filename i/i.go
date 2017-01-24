@@ -9,11 +9,6 @@ type Mtr interface {
 	AssignVariables(options interface{})
 	MakeServices()
 	LangMatrix()
-	SplitGlue() string
-	Glue() string
-	Source() string
-	Target() string
-	Arr() bool
 	Txtrq() *t.TextReq
 }
 type Ep interface {

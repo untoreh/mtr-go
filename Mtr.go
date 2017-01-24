@@ -7,8 +7,8 @@ import (
 	"strings"
 	"log"
 	"math/rand"
-	"github.com/untoreh/mtr-go/i"
 	"github.com/untoreh/mtr-go/services"
+	"github.com/untoreh/mtr-go/factory"
 )
 
 /*
@@ -18,16 +18,12 @@ type Mtr struct {
 	In           string
 	Arr          bool
 	services     []string
-	defGlue      string
-	defSplitglue string
-	Glue         string
-	SplitGlue    string
 	Ep           *services.Ep
 	Merge        bool
 	matrix       map[string]map[string]string
 	Txtrq        *tools.TextReq
 	Lc           *tools.LanguageCode
-	mksrv        i.Services
+	factory      *factory.Factory
 	srv          map[string]*services.Ep
 	httpOpts     map[string]interface{}
 	options      map[string]interface{}
@@ -35,21 +31,13 @@ type Mtr struct {
 	Source       string
 }
 
-var MtrV = &Mtr{
+var mtr_v = Mtr{
 	// input
 	"",
 	// is input array ?
 	false,
 	// services list
 	[]string{},
-	// default glue
-	" ; ; ",
-	// default split glue
-	"/\\s*;\\s*;\\s*/",
-	// applied glue
-	"",
-	// applied split glue
-	"",
 	// end point parent
 	services.GEp,
 	// merge flag
@@ -61,7 +49,7 @@ var MtrV = &Mtr{
 	// LanguageCode
 	tools.Lc,
 	// ServicesFactory
-	new(i.Services),
+	new(factory.Factory),
 	// Services
 	map[string]*services.Ep{},
 	// http options
@@ -75,9 +63,6 @@ var MtrV = &Mtr{
 }
 
 func (mtr *Mtr) AssignVariables(options map[string]interface{}) {
-	// default glues
-	mtr.Glue = mtr.defGlue
-	mtr.SplitGlue = mtr.defSplitglue
 	// default http
 	mtr.httpOpts = map[string]interface{}{
 		"http_errors" : true,
@@ -85,7 +70,7 @@ func (mtr *Mtr) AssignVariables(options map[string]interface{}) {
 		"timeout" : 30,
 	}
 	// custom options
-	mtr.options = options
+	mergo.Merge(&mtr.options, options)
 }
 
 func (mtr *Mtr) Tr(source string, target string, input interface{}, service string) (interface{}) {
@@ -93,8 +78,8 @@ func (mtr *Mtr) Tr(source string, target string, input interface{}, service stri
 		return false;
 	}
 
-	mtr.Source = source;
-	mtr.Target = target;
+	mtr.Source, mtr.Ep.Source = source, source;
+	mtr.Target, mtr.Ep.Target = target, target;
 
 	service = mtr.PickService(service);
 
@@ -115,7 +100,7 @@ func (mtr *Mtr) Tr(source string, target string, input interface{}, service stri
 	}
 
 	if reflect.TypeOf(input).String() == "map[string]string" {
-		mtr.Arr = true
+		mtr.Arr, mtr.Ep.Arr = true, true
 		translations := mtr.srv[service].Translate(source, target, pinput, mtr.Ep)
 		for k := range input.([]string) {
 			pinput[k] = translations[k]
@@ -228,13 +213,14 @@ func (mtr *Mtr) MakeServices() {
 	if _, ok := mtr.options["httpOpts"]; ok {
 		mergo.Merge(&mtr.httpOpts, mtr.options["request"])
 	}
-	// language detector
-	// generate services from the services dir
-	//$this->srv = new \stdClass();
-	var ok bool
-	if mtr.services, ok = tools.Cache.Get("mtr_services"); ok {
+	// generate services
+	if _, ok := mtr.options["services"] ; ok {
+		for _, name := range mtr.options["services"].([]string) {
+			mtr.srv[name] = tools.Call(mtr.factory, strings.Title(name), nil)[0].Interface().(*services.Ep);
+		}
+	} else {
 		for _, name := range mtr.services {
-			mtr.srv[name] = tools.Call(mtr.mksrv, "New" + strings.Title(name), nil);
+			mtr.srv[name] = tools.Call(mtr.factory, strings.Title(name), nil)[0].Interface().(*services.Ep);
 		}
 	}
 }
@@ -244,4 +230,12 @@ func (mtr *Mtr) SupLangs() (interface{}) {
 	} else {
 		return err
 	}
+}
+
+func New(options map[string]interface{}) *Mtr {
+	mtr := mtr_v
+	mtr.AssignVariables(options)
+	mtr.MakeServices()
+	mtr.LangMatrix()
+	return &mtr
 }
