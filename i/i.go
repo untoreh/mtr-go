@@ -1,19 +1,17 @@
 package i
 
-import t "github.com/untoreh/mtr-go/tools"
+import (
+	t "github.com/untoreh/mtr-go/tools"
+	"github.com/levigross/grequests"
+)
 
-type Genreq func(interface{}) interface{}
+type Genreq func(map[string]interface{}) grequests.RequestOptions
 type Services interface{}
 
-type Mtr interface {
-	AssignVariables(options interface{})
-	MakeServices()
-	LangMatrix()
-	Txtrq() *t.TextReq
-}
 type Ep interface {
 	GenQ(input t.SMII, order t.MISI, genReqFun Genreq) (inputs map[int]map[string]interface{}, str_ar []interface{})
 	DoReqs(verb string, url string, options map[string]interface{}, inputs map[int]map[string]interface{}) ([]interface{})
 	JoinTranslated(str_ar []interface{}, input interface{}, translation interface{}, glue string) (map[interface{}]*string)
-	Mtr
 }
+
+type Pinput map[string]*string

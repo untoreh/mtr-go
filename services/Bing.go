@@ -4,55 +4,68 @@ import (
 	"regexp"
 	"github.com/imdario/mergo"
 	t "github.com/untoreh/mtr-go/tools"
-	"github.com/untoreh/mtr-go/i"
-	"net/http"
 	"github.com/levigross/grequests"
+	"github.com/untoreh/mtr-go/i"
+	"encoding/json"
 )
 
-func (bing *Ep) InitBing() {
-	bing.Name = "bing"
+func (se *Ep) InitBing() {
+	se.Name = "bing"
+
+	// setup cache keys
+	se.Cak = map[string]string{}
+	for _, ck := range se.CaPrefix {
+		se.Cak[ck] = ck + "_" + se.Name
+	}
+
 	// misc
-	mergo.Merge(&bing.Misc, map[interface{}]interface{}{
+	mergo.MergeWithOverwrite(&se.Misc, map[string]interface{}{
 		"weight" : 30,
-		"glue" : "; ¶; ",
-		"splitGlue" : "/;\\s?¶;\\s?/",
+		"glue" : `; ¶; `,
+		"splitGlue" : `;\s?¶;\s?`,
 	})
 	// urls
-	mergo.Merge(&bing.Urls, map[interface{}]interface{}{
+	mergo.Merge(&se.UrlStr, map[string]string{
 		"bingL" : "http://www.bing.com/translator/",
 		"bing" : "http://www.bing.com/translator/api/Translate/TranslateArray",
 	})
-	// cookies
-	if fetch, ok := t.Cache.Get("mtr_cookies_bing"); ok {
-		bing.Cookies = fetch.([]*http.Cookie)
-	} else {
-		bing.Cookies = []*http.Cookie{}
-	}
+	se.Urls = t.ParseUrls(se.UrlStr)
+
 	// params
-	mergo.Merge(&bing.Params, map[interface{}]interface{}{
-		"service" : grequests.RequestOptions{
-			Headers: map[string]string{
-				"Host" : "www.bing.com",
-				"Accept" : "application/json, text/javascript, */*; q=0.01",
-				"Accept-Language" : "en-US,en;q=0.5",
-				"Accept-Encoding" : "gzip, deflate, br",
-				"Referer" : "https://www.bing.com/translator/",
-				"Content-Type" : "application/json; charset=utf-8",
-				"X-Requested-With" : "XMLHttpRequest",
-			},
-			UseCookieJar: true,
-			Cookies: bing.Cookies,
-		},
-		"method" : "postjson",
+	// default base request options for bing
+	headers := map[string]string{
+		"Host" : "www.bing.com",
+		"Accept" : "application/json, text/javascript, */*; q=0.01",
+		"Accept-Language" : "en-US,en;q=0.5",
+		"Accept-Encoding" : "gzip, deflate, br",
+		"Referer" : "https://www.bing.com/translator/",
+		"Content-Type" : "application/json; charset=utf-8",
+		"X-Requested-With" : "XMLHttpRequest",
+	}
+	mergo.MergeWithOverwrite(&se.Req, grequests.RequestOptions{
+		Headers: headers,
+		UseCookieJar: true,
 	})
-	bing.Translate = func(source string, target string, pinput map[interface{}]*string, s *Ep) map[interface{}]*string {
+
+	se.MkReq = func() *grequests.RequestOptions {
+		// iterate through map to copy map by value
+		//config := map[string]interface{}{}
+		//for k, v := range se.Config {
+		//	config[k] = v
+		//}
+		// setup custom keys, assign requestOption to a new var to pass by value to map
+		reqV := se.Req
+		return &reqV
+	}
+
+	se.Translate = func(source string, target string, pinput i.Pinput) i.Pinput {
 		// order of the original input array of map of numbers to slice of keys
 		var order t.MISI
 		// input made of split strings
 		var qinput t.SMII
 
-		if s.Arr {
-			qinput, order = s.PreReq(pinput, s)
+		if se.Arr {
+			qinput, order = se.PreReq(pinput)
 		} else {
 			return nil
 		}
@@ -60,13 +73,22 @@ func (bing *Ep) InitBing() {
 			source = "-"
 		}
 
-		add := map[string]interface{}{"query"  : map[string]string{"from"  : s.Source, "to"  : s.Target} }
-		mergo.Merge(s.Params, add)
+		// setup custom keys
+		reqSrv := se.MkReq()
+		//reqSrv := config["request"].(*grequests.RequestOptions)
 
-		inputs, str_ar := s.GenQ(qinput, order, s.GenReq)
+		reqSrv.Params["from"] = source
+		reqSrv.Params["to"] = target
+
+		requests, str_ar := se.GenQ(qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := s.DoReqs("POST", bing.Urls["bing"], s.Params, inputs)
+		sl_rej := make([]interface{}, len(requests))
+		sl_res := se.DoReqs("POST", "bing", requests)
+		for k, res := range sl_res {
+			res.JSON(&sl_rej[k])
+		}
+
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
@@ -76,28 +98,31 @@ func (bing *Ep) InitBing() {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := s.JoinTranslated(str_ar, qinput, translation, s.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
 
 		return translated
 	}
-	bing.GenReq = func(params interface{}) (interface{}) {
-		m := map[string]interface{}{}
-		m = map[string]interface{}{"json" : []map[string]interface{}{{"text" : params.(map[string]interface{})["data"].(*string)}, }, }
-		return m
+	se.GenReq = func(params map[string]interface{}) (newreq grequests.RequestOptions) {
+		data := *(params["data"].(*string))
+		newreq = *(params["req"].(*grequests.RequestOptions))
+		newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text" : data}, })
+		return
 	}
-	bing.PreReq = func(pinput map[interface{}]*string, s *Ep) (t.SMII, t.MISI) {
+	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
-		s.GenC(&bing.Name);
-		qinput, order := (s.Txtrq()).Pt(pinput, s.Arr, s.Misc["glue"].(string));
+		se.GenC("bingL");
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
 		return qinput, order
 	}
-	bing.GetLangs = func(s i.Ep) map[string]string {
-		re, _ := regexp.Compile(`(?m:value="?([a-z]{2,3}(-[A-Z]{2,4})?)"?>)`)
-		options := map[string]interface{}{
-			"RequestOptions" : grequests.RequestOptions{},
-		}
-		req := s.DoReqs("GET", "bingL", options, nil)
-		matches_a := re.FindAllStringSubmatch(req[0].(string), -1)
+	se.GetLangs = func() map[string]string {
+		// regex
+		re := regexp.MustCompile(`(?m:value="?([a-z]{2,3}(-[A-Z]{2,4})?)"?>)`)
+
+		// request
+		resp := se.DoReqs("GET", "bingL", map[int]*grequests.RequestOptions{})[0]
+		matches_a := re.FindAllStringSubmatch(resp.String(), -1)
+
+		// loop through langs
 		langs := map[string]string{}
 		for _, group := range matches_a {
 			if _, ok := langs[group[1]]; !ok {

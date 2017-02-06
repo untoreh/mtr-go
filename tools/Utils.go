@@ -6,6 +6,13 @@ import (
 	"errors"
 	"bytes"
 	"sort"
+	"io"
+	"unicode"
+	"fmt"
+	"log"
+	"strings"
+	"compress/gzip"
+	"net/url"
 )
 
 func Ck(set interface{}) (bool) {
@@ -18,7 +25,7 @@ func Ck(set interface{}) (bool) {
 
 func Must(i interface{}, err error) interface{} {
 	if err != nil {
-		panic(err)
+		log.Print(err)
 	}
 	return i
 }
@@ -106,4 +113,67 @@ func Keys(v interface{}) ([]string, error) {
 		result = append(result, kv.String())
 	}
 	return result, nil
+}
+
+func ConvertUtf8(stream io.ReadCloser) io.Reader {
+	var br bytes.Buffer
+	buf := bytes.NewBuffer(nil)
+	br.ReadFrom(stream)
+	len := br.Len()
+	for c := 0; c < len; c++ {
+		r, _, _ := br.ReadRune()
+		if unicode.IsControl(rune(r)) {
+			fmt.Fprintf(buf, "\\u%04X", r)
+		} else {
+			fmt.Fprintf(buf, "%c", r)
+		}
+	}
+	return buf
+}
+
+// https://gist.github.com/sisteamnik/c866cb7eed264ea3408d
+func MbSubstr(s string, from, length int) string {
+	//create array like string view
+	wb := []string{}
+	wb = strings.Split(s, "")
+
+	//miss nil pointer error
+	to := from + length
+
+	if to > len(wb) {
+		to = len(wb)
+	}
+
+	if from > len(wb) {
+		from = len(wb)
+	}
+
+	return strings.Join(wb[from:to], "")
+}
+
+func GzipString(s string) string {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write([]byte(s)); err != nil {
+		log.Print(err)
+	}
+	if err := gz.Flush(); err != nil {
+		log.Print(err)
+	}
+	if err := gz.Close(); err != nil {
+		log.Print(err)
+	}
+	fmt.Println(b)
+	return b.String()
+}
+
+func ParseUrls(urls map[string]string) (map[string]*url.URL) {
+	var e error
+	murls := map[string]*url.URL{}
+	for t, u := range urls {
+		if murls[t], e = url.Parse(u); e != nil {
+			log.Print(e)
+		}
+	}
+	return murls
 }

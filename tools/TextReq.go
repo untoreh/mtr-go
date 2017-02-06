@@ -21,12 +21,11 @@ type MISI map[I][]I
 // is not really worth the effort since requests are split and unordered anyway. Anyway the fact
 // that it returns different values means that requests for the same map of strings can vary up to
 // n * sumof(input[k])
-func (txtrq *TextReq) Pt(input map[interface{}]*string, arr bool, glue string) (SMII, MISI) {
+func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
 	// arr_input contains single string or array of strings
 	//var arr_input strar
 	arr_input := SMII{}
 	order := MISI{}
-
 	// parts keeps the strings below 1024 to join in 1 req
 	var parts SI
 	// chars keeps the characters count between multiple items
@@ -46,7 +45,7 @@ func (txtrq *TextReq) Pt(input map[interface{}]*string, arr bool, glue string) (
 			initSI(&arr_input, p)
 			for _, kp := range parts {
 				order[p] = append(order[p], kp)
-				arr_input[p][kp] = input[kp]
+				arr_input[p][kp] = input[kp.(string)]
 			}
 			// stringify if the query holds multiple strings
 			if len(arr_input[p]) > 1 {
@@ -68,7 +67,7 @@ func (txtrq *TextReq) Pt(input map[interface{}]*string, arr bool, glue string) (
 		initSI(&arr_input, p)
 		for _, key := range parts {
 			order[p] = append(order[p], key)
-			arr_input[p][key] = input[key]
+			arr_input[p][key] = input[key.(string)]
 			//runtime.Breakpoint()
 		}
 		// stringify if the query holds multiple strings

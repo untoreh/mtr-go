@@ -1620,7 +1620,7 @@ func (lc *LanguageCode) Convert(value string) string {
 	}
 
 	if index == "" {
-		log.Fatal("Language code " + value + " not found.")
+		log.Print("Language code " + value + " not found.")
 	}
 
 	if _, ok := (*lc.Langs)[index]["iso639-1"]; !ok {
