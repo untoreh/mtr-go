@@ -13,8 +13,6 @@ import (
 	"strconv"
 	"fmt"
 	"log"
-	"compress/gzip"
-	"io/ioutil"
 )
 
 func (se *Ep) InitGoogle() {
@@ -47,7 +45,7 @@ func (se *Ep) InitGoogle() {
 		"Host" : "translate.google.com",
 		"Accept" : "*/*",
 		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "gzip, deflate, br",
+		"Accept-Encoding" : "*",
 		"Referer" : "https://translate.google.com/",
 		"Connection" : "keep-alive",
 	}
@@ -72,16 +70,8 @@ func (se *Ep) InitGoogle() {
 	})
 
 	se.MkReq = func() *grequests.RequestOptions {
-		// setup custom keys, assign requestOption to a new var to pass by value to map
+		// assign requestOption to a new var to pass by value to map
 		reqV := se.Req
-		// duplicate values of the struct which are going to be modified by the request
-		// to avoid concurrent map writes
-		//params := map[string]string{}
-		//for k, v := range reqV.Params {
-		//	params[k] = v
-		//}
-		//reqV.Params = params
-
 		return &reqV
 	}
 
@@ -260,17 +250,9 @@ func (se *Ep) InitGoogle() {
 		// do the requests through channels
 		le := len(requests)
 		sl_rej := make([][]byte, le)
-		var err error
-		var rea *gzip.Reader
 		sl_res := se.DoReqs("POST", "google", requests)
 		for k, res := range sl_res {
-			//read, _ := gzip.NewReader(res.RawResponse.Body)
-			if rea, err = gzip.NewReader(res); err != nil {
-				log.Print(err)
-			}
-			if sl_rej[k], err = ioutil.ReadAll(rea); err != nil {
-				log.Print(err)
-			}
+			sl_rej[k] = res.Bytes()
 		}
 
 		// loop through the responses selecting the translated string
@@ -303,12 +285,6 @@ func (se *Ep) InitGoogle() {
 			}
 		newreq.Params = params
 		newreq.Params["tk"] = gooV.generateToken(data)
-		//m = map[string]interface{}{
-		//	"Data" : ,
-		//	"Params" : map[string]string{
-		//		"tk" :  ,
-		//	},
-		//}
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (qinput t.SMII, order t.MISI) {

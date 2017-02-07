@@ -20,3 +20,9 @@ func (f *Factory) Google() (*services.Ep) {
 	return &Google
 }
 
+func (f *Factory) Yandex() (*services.Ep) {
+	Yandex := services.Ep(*services.GEp)
+	Yandex.InitYandex()
+	return &Yandex
+}
+

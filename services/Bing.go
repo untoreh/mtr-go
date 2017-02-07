@@ -48,12 +48,7 @@ func (se *Ep) InitBing() {
 	})
 
 	se.MkReq = func() *grequests.RequestOptions {
-		// iterate through map to copy map by value
-		//config := map[string]interface{}{}
-		//for k, v := range se.Config {
-		//	config[k] = v
-		//}
-		// setup custom keys, assign requestOption to a new var to pass by value to map
+		// assign requestOption to a new var to pass by value to map
 		reqV := se.Req
 		return &reqV
 	}
