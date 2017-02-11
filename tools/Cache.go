@@ -2,7 +2,6 @@ package tools
 
 import (
 	"github.com/patrickmn/go-cache"
-	"time"
 	"bytes"
 	"encoding/gob"
 	"log"
@@ -11,7 +10,7 @@ import (
 type Ca struct{
 	*cache.Cache
 }
-var Cache = Ca{cache.New(-1, 30 * time.Second)}
+var Cache = Ca{cache.New(-1, Seconds(30))}
 var NoExpiration = cache.NoExpiration
 
 func (c Ca) ToBytes(value interface{}) ([]byte, error) {

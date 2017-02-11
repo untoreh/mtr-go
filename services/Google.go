@@ -15,7 +15,7 @@ import (
 	"log"
 )
 
-func (se *Ep) InitGoogle() {
+func (se *Ep) InitGoogle( map[string]interface{}) {
 	se.Name = "google"
 
 	// setup cache keys
@@ -24,23 +24,25 @@ func (se *Ep) InitGoogle() {
 		se.Cak[ck] = ck + "_" + se.Name
 	}
 
-	// misc
-	mergo.MergeWithOverwrite(&se.Misc, map[string]interface{}{
+	// misc, the misc map is unique for each service
+	tmpmisc := se.Misc
+	se.Misc = map[string]interface{}{
 		"weight" : 30,
 		"glue" : ` ; ¶ ; `,
 		"splitGlue" : ` ?; ¶ ?; ?`,
 		"googleRegexes" : map[string]string{`,+` : `,`, `\[,` : `[`, },
-	})
+	}
+	mergo.Merge(&se.Misc, tmpmisc)
 
-	// urls
+	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
 		"googleL" : "http://translate.google.com",
 		"google" : "http://translate.google.com/translate_a/single",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
-	// params
 	// default base request options for google
+	// the header map is unique for each service
 	headers := map[string]string{
 		"Host" : "translate.google.com",
 		"Accept" : "*/*",
@@ -63,15 +65,20 @@ func (se *Ep) InitGoogle() {
 		"tsel" : "0",
 		"kc" : "1",
 	}
-	mergo.MergeWithOverwrite(&se.Req, grequests.RequestOptions{
+
+	// copy the default request
+	tmpreq := se.Req
+	se.Req = grequests.RequestOptions{
 		Headers: headers,
 		Params: query,
 		UseCookieJar: true,
-	})
+	}
+	mergo.Merge(&se.Req, tmpreq)
 
-	se.MkReq = func() *grequests.RequestOptions {
+	se.MkReq = func(source string, target string) *grequests.RequestOptions {
 		// assign requestOption to a new var to pass by value to map
-		reqV := se.Req
+		reqV := grequests.RequestOptions{}
+		mergo.Merge(&reqV, se.Req)
 		return &reqV
 	}
 
@@ -239,21 +246,15 @@ func (se *Ep) InitGoogle() {
 		}
 
 		// setup custom keys
-		reqSrv := se.MkReq()
-		//reqSrv := config["request"].(*grequests.RequestOptions)
-
+		reqSrv := se.MkReq(source, target)
 		reqSrv.Params["sl"] = source
 		reqSrv.Params["tl"] = target
 
-		requests, str_ar := se.GenQ(qinput, order, se.GenReq, reqSrv)
+		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
 		le := len(requests)
-		sl_rej := make([][]byte, le)
-		sl_res := se.DoReqs("POST", "google", requests)
-		for k, res := range sl_res {
-			sl_rej[k] = res.Bytes()
-		}
+		sl_rej := se.RetReqs(nil, "bytes", "POST", "google", requests).([][]byte)
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, le)
@@ -298,8 +299,8 @@ func (se *Ep) InitGoogle() {
 		re := regexp.MustCompile(`value=([a-z]{2,3}(\-[A-Z]{2,4})?)>`)
 
 		// request
-		resp := se.DoReqs("GET", "googleL", map[int]*grequests.RequestOptions{})[0]
-		matches_a := re.FindAllStringSubmatch(resp.String(), -1)
+		str := se.RetReqs(nil, "string", "GET", "googleL", map[int]*grequests.RequestOptions{}).([]string)[0]
+		matches_a := re.FindAllStringSubmatch(str, -1)
 
 		// loop through langs
 		langs := map[string]string{}

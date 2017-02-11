@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-func (se *Ep) InitYandex() {
+func (se *Ep) InitYandex(map[string]interface{}) {
 	se.Name = "yandex"
 
 	// setup cache keys
@@ -19,13 +19,20 @@ func (se *Ep) InitYandex() {
 		se.Cak[ck] = ck + "_" + se.Name
 	}
 
-	// misc
-	yandexId, _ := t.Cache.Get("yandex_id")
-	mergo.MergeWithOverwrite(&se.Misc, map[string]interface{}{
+	// misc, the misc map is unique for each service
+	tmpmisc := se.Misc
+	se.Misc = map[string]interface{}{
 		"weight" : 30,
-		"yandexId" : yandexId,
-	})
-	// urls
+	}
+	// we only set it if it is present in cache, otherwise the check for it before the requests
+	// does not work if we set an empty value, we could check the value from the cache
+	// directly but maybe it is slower
+	if yandexId, found := t.Cache.Get("yandex_id"); found {
+		se.Misc["yandexId"] = yandexId
+	}
+	mergo.Merge(&se.Misc, tmpmisc)
+
+	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
 		"yandexL" : "https://translate.yandex.net/api/v1/tr.json/getLangs",
 		"yandex1" : "https://translate.yandex.com",
@@ -33,8 +40,8 @@ func (se *Ep) InitYandex() {
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
-	// params
 	// default base request options for yandex
+	// the header map is unique for each service
 	headers := map[string]string{
 		"Host" : "translate.yandex.net",
 		"Accept" : "*/*",
@@ -49,15 +56,26 @@ func (se *Ep) InitYandex() {
 		"srv" : "tr-text",
 		"reason" : "paste",
 	}
-	mergo.MergeWithOverwrite(&se.Req, grequests.RequestOptions{
+	// copy the default request
+	tmpreq := se.Req
+	se.Req = grequests.RequestOptions{
 		Headers: headers,
 		Params: query,
-	})
+	}
+	mergo.Merge(&se.Req, tmpreq)
 
-	se.MkReq = func() *grequests.RequestOptions {
+	se.MkReq = func(source string, target string) *grequests.RequestOptions {
 		// assign requestOption to a new var to pass by value to map
-		reqV := se.Req
+		reqV := grequests.RequestOptions{}
+		reqV.Params = map[string]string{}
+		reqV.Params["lang"] = source + "-" + target
+		reqV.Params["id"] = se.Misc["yandexId"].(string)
+		mergo.Merge(&reqV, se.Req)
 		return &reqV
+	}
+
+	type respJson struct {
+		Text []string
 	}
 
 	se.Translate = func(source string, target string, pinput i.Pinput) i.Pinput {
@@ -71,32 +89,19 @@ func (se *Ep) InitYandex() {
 		} else {
 			return nil
 		}
-		if (source == "auto") {
-			source = "-"
-		}
 
 		// setup custom keys
-		reqSrv := se.MkReq()
-		//reqSrv := config["request"].(*grequests.RequestOptions)
+		reqSrv := se.MkReq(source, target)
 
-		reqSrv.Params["lang"] = source + "-" + target
-		reqSrv.Params["id"] = se.Misc["yandexId"].(string)
-
-		requests, str_ar := se.GenQ(qinput, order, se.GenReq, reqSrv)
+		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := make([]interface{}, len(requests))
-		sl_res := se.DoReqs("POST", "yandex2", requests)
-		for k, res := range sl_res {
-			if err := res.JSON(&sl_rej[k]) ; err != nil {
-				log.Print(err)
-			}
-		}
+		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "yandex2", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
 		for k, rej := range sl_rej {
-			translation[k] = rej.(map[string]interface{})["text"].([]interface{})[0].(string)
+			translation[k] = rej.(*respJson).Text[0]
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
@@ -120,7 +125,8 @@ func (se *Ep) InitYandex() {
 		if _, ok := se.Misc["yandexId"]; !ok {
 			matches1 := regexp.MustCompile(`SID: '.*`).
 				FindAllStringSubmatch(
-				se.DoReqs("GET", "yandex1", nil)[0].String(), -1)
+				se.RetReqs(nil, "string", "GET", "yandex1", nil).
+				([]string)[0], -1)
 			sid := regexp.MustCompile(`SID: '(.*)'`).
 				FindAllStringSubmatch(matches1[0][0], -1)[0]
 			sidSp := strings.Split(sid[1], ".")
@@ -140,28 +146,29 @@ func (se *Ep) InitYandex() {
 	}
 	se.GetLangs = func() map[string]string {
 		// langs req
-		lReq := se.MkReq()
-		lReq.Params["ui"] = "en"
+		lReq := &grequests.RequestOptions{
+			Params: map[string]string{
+				"ui" : "en",
+			},
+		}
+		mergo.Merge(lReq, se.Req)
 		// request
-		resp := se.DoReqs("GET", "yandexL", map[int]*grequests.RequestOptions{
-			0 : lReq })[0]
-		// delete the key from the referenced params map
-		delete(lReq.Params, "ui")
-		if resp == nil {
+		type jl struct {
+			Dirs  []string
+			Langs map[string]string
+		}
+		jlv := se.RetReqs(&jl{}, "json", "GET", "yandexL", map[int]*grequests.RequestOptions{
+			0 : lReq }).([]interface{})[0].(*jl)
+		if jlv == nil {
 			log.Print("Failed to retrieve yandex langs")
 			return nil
 		}
-		var jl struct {
-			Dirs []string
-			Langs map[string]string
-		}
-		if err := resp.JSON(&jl) ; err != nil {
-			log.Print(err)
-		}
+		// delete the key from the referenced params map
+		delete(lReq.Params, "ui")
 
 		// loop through langs
 		langs := map[string]string{}
-		for l := range jl.Langs {
+		for l := range jlv.Langs {
 			if _, ok := langs[l]; !ok {
 				langs[l] = l
 			}

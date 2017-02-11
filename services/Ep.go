@@ -14,6 +14,7 @@ import (
 	"time"
 	"net/url"
 	"log"
+	"sync"
 )
 
 type Ep struct {
@@ -25,17 +26,17 @@ type Ep struct {
 	Cak       map[string]string
 	CaPrefix  []string
 	CookieJar *cookiejar.Jar
+	CookEx    sync.RWMutex
+	CookC     *sync.Cond
 	Req       grequests.RequestOptions
 	Config    map[string]interface{}
 	Arr       bool
-	Source    string
-	Target    string
 	Active    bool
 	Txtrq     *t.TextReq
 	Translate func(source string, target string, pinput i.Pinput) i.Pinput
 	PreReq    func(pinput i.Pinput) (t.SMII, t.MISI)
 	GenReq    i.Genreq
-	MkReq     func() *grequests.RequestOptions
+	MkReq     func(source string, target string) *grequests.RequestOptions
 	GetLangs  func() map[string]string
 }
 
@@ -59,44 +60,47 @@ func (ep *Ep) epDefaults() {
 		Headers: map[string]string{
 			"User-Agent" : agent.(string),
 		},
-		QueryStruct: nil,
-		Params: map[string]string{},
-		Data: map[string]string{},
+		DialKeepAlive: t.Seconds(60),
 	}
-	ep.Config = map[string]interface{}{}
 	ep.Misc = map[string]interface{}{
 		"glue" : ` ; ; `,
 		"splitGlue" : `/\s*;\s*;\s*/`,
-		"timeout" : 60 * time.Second,
-		"sleep" : 1 * time.Second,
+		"timeout" : t.Seconds(60),
+		"sleep" : t.Seconds(1),
 	}
 
 	ep.CaPrefix = []string{"cookies", "langs", "langsConv"}
 
+	ep.CookEx = sync.RWMutex{}
+	ep.CookC = sync.NewCond(&ep.CookEx)
+
 	ep.Active = true;
 }
 
-func (ep *Ep) GenC(serviceL string) {
+func (ep *Ep) GenC(serviceL string) bool {
+	// if cache exists we do nothing, it is already assigned, it is just a timeout
 	if _, ok := t.Cache.Get(ep.Cak["cookies"]); ok {
-		// if cache exists we do nothing, it is already assigned, it is just a timeout
-		//ep.Re.Cookies = fetch.([]*http.Cookie)
-		//ep.Config["request"] = ep.Re
-	} else {
-		ep.CookieJar, _ = cookiejar.New(nil)
-		// generate the cookies
-		ep.DoReqs("GET", serviceL, map[int]*grequests.RequestOptions{
-			0: &grequests.RequestOptions{
-				CookieJar: ep.CookieJar,
-				UseCookieJar: true, },
-		})
-
-		ep.Req.Cookies = ep.CookieJar.Cookies(ep.Urls[serviceL])
-		ep.Config["request"] = ep.Req
-		t.Cache.Set(ep.Cak["cookies"], ep.CookieJar.Cookies(ep.Urls[serviceL]), ep.ttl())
+		return false
 	}
+	ep.CookEx.Lock()
+	// redo the check in case another routine already set the cookies
+	if _, ok := t.Cache.Get(ep.Cak["cookies"]); ok {
+		return false
+	}
+	ep.CookieJar, _ = cookiejar.New(nil)
+	// generate the cookies
+	ep.DoReqs("GET", serviceL, map[int]*grequests.RequestOptions{
+		0: &grequests.RequestOptions{
+			CookieJar: ep.CookieJar,
+			UseCookieJar: true, },
+	})
+	ep.Req.Cookies = ep.CookieJar.Cookies(ep.Urls[serviceL])
+	t.Cache.Set(ep.Cak["cookies"], ep.CookieJar.Cookies(ep.Urls[serviceL]), ep.ttl())
+	ep.CookEx.Unlock()
+	return true
 }
 
-func (ep *Ep) GenQ(input t.SMII, order t.MISI, genReqFun i.Genreq, req *grequests.RequestOptions) (inputs map[int]*grequests.RequestOptions, str_ar []interface{}) {
+func (ep *Ep) GenQ(source string, target string, input t.SMII, order t.MISI, genReqFun i.Genreq, req *grequests.RequestOptions) (inputs map[int]*grequests.RequestOptions, str_ar []interface{}) {
 	// str_ar is the slice that keeps track of the actual strings, preserving the order
 	// used in the post request rejoin process
 	str_ar = []interface{}{}
@@ -115,8 +119,8 @@ func (ep *Ep) GenQ(input t.SMII, order t.MISI, genReqFun i.Genreq, req *grequest
 
 			// we pass the imploded 's' str
 			rreq := genReqFun(map[string]interface{}{
-				"source" : ep.Source,
-				"target" : ep.Target,
+				"source" : source,
+				"target" : target,
 				"data" : input_part["s"],
 				"req" : req,
 			})
@@ -135,8 +139,8 @@ func (ep *Ep) GenQ(input t.SMII, order t.MISI, genReqFun i.Genreq, req *grequest
 				// and we pass it to the input generator
 				if reflect.TypeOf(input_frag).String() == "*string" {
 					rreq := genReqFun(map[string]interface{}{
-						"source" : ep.Source,
-						"target" : ep.Target,
+						"source" : source,
+						"target" : target,
 						"data" : input_frag.(*string),
 						"req" : req,
 					})
@@ -146,8 +150,8 @@ func (ep *Ep) GenQ(input t.SMII, order t.MISI, genReqFun i.Genreq, req *grequest
 					// else if was split for multiple requests
 					for _, frag := range input_frag.([]string) {
 						rreq := genReqFun(map[string]interface{}{
-							"source" : ep.Source,
-							"target" : ep.Target,
+							"source" : source,
+							"target" : target,
 							"data" : &frag,
 							"req" : req,
 						})
@@ -209,6 +213,42 @@ func (ep *Ep) JoinTranslated(str_ar []interface{}, input interface{}, translatio
 	}
 	return translated
 }
+
+func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs map[int]*grequests.RequestOptions) (interface{}) {
+	sl_res := ep.DoReqs(verb, url, reqs)
+	switch tp {
+	case "bytes":
+		dst := make([][]byte, len(sl_res))
+		for k := range sl_res {
+			dst[k] = sl_res[k].Bytes()
+			sl_res[k].Close()
+		}
+		return dst
+	case "string":
+		dst := make([]string, len(sl_res))
+		for k := range sl_res {
+			dst[k] = sl_res[k].String()
+			sl_res[k].Close()
+		}
+		return dst
+	case "json":
+		dstSl := make([]interface{}, len(sl_res))
+		for k := range sl_res {
+			if err := sl_res[k].JSON(dst); err != nil {
+				log.Print(err)
+			}
+			sl_res[k].Close()
+			dstSl[k] = dst
+		}
+		return dstSl
+	default:
+		for k := range sl_res {
+			sl_res[k].Close()
+		}
+		return nil
+	}
+}
+
 func (ep *Ep) DoReqs(verb string, url string, reqs map[int]*grequests.RequestOptions) ([]*grequests.Response) {
 	l := len(reqs)
 	if (l == 0) {
@@ -217,27 +257,29 @@ func (ep *Ep) DoReqs(verb string, url string, reqs map[int]*grequests.RequestOpt
 		resp := <-c
 		return []*grequests.Response{resp}
 	}
-	sl_rej := make([]*grequests.Response, l)
+	sl_res := make([]*grequests.Response, l)
 	sl_cr := make([]chan *grequests.Response, l)
 	for k, req := range reqs {
 		sl_cr[k] = make(chan *grequests.Response)
 		go ep.reqResponse(verb, url, req, sl_cr[k])
 	}
 	for k := range reqs {
-		sl_rej[k] = <-sl_cr[k]
+		sl_res[k] = <-sl_cr[k]
 	}
-	return sl_rej
+	return sl_res
 }
 
 func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOptions, c chan *grequests.Response) {
 	for ret := 0; ret < 5; ret++ {
+		println(urlstr)
 		if resp, err := grequests.Req(verb, ep.UrlStr[urlstr], reqo); t.Ck(err) && resp.StatusCode == 200 {
 			// convert ot json struct
-			defer resp.Close()
 			c <- resp
+			return
 		} else {
 			// don't defer this to avoid too many connections on multiple retries
-			log.Printf("err: %v, statuscode: %d", err, resp.StatusCode)
+			log.Printf("err: %v, statuscode: %d, url: %v \n json: \n %v \n params: \n %v \n",
+				err, resp.StatusCode, ep.UrlStr[urlstr], reqo.JSON, reqo.Params)
 			resp.Close()
 			time.Sleep(ep.Misc["sleep"].(time.Duration))
 		}
@@ -246,7 +288,7 @@ func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOpt
 }
 
 func (ep *Ep) ttl() (time.Duration) {
-	return time.Duration(rand.Intn(6000 - 600) + 600) * time.Second
+	return t.Seconds(rand.Intn(6000 - 600) + 600)
 }
 
 func (ep *Ep) options(options *grequests.RequestOptions) (*grequests.RequestOptions) {

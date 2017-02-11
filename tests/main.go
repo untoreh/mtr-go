@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/untoreh/mtr-go"
-	"github.com/davecgh/go-spew/spew"
 	"log"
+	"github.com/gorilla/mux"
+	"net/http"
+	"github.com/gorilla/handlers"
 )
 
 func main() {
@@ -167,24 +169,26 @@ func main() {
 	}
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	m := mtr_go.New(map[string]interface{}{
-		"services" : []string{"google"},
-	})
-	tran := m.Tr("en", "it", input, "google", "nil")
-	var _ = tran
-	var _ = input
-	spew.Dump(input)
-	spew.Dump(tran)
-	return
 
-	//r := mux.NewRouter()
-	//// Routes consist of a path and a handler function.
-	//r.HandleFunc("/", m.GETHandler).Methods("GET")
-	//r.HandleFunc("/", m.POSTHandler).Methods("POST")
-	//r.HandleFunc("/multi", m.POSTHandlerMulti).Methods("POST")
-	//
-	//// Bind to a port and pass our router in
-	//log.Print(http.ListenAndServe(":8001", r))
+	m := mtr_go.New(map[string]interface{}{
+		"services" : "treu",
+	})
+	//tran := m.Tr("en", "it", "hello how are you", "systran", "nil")
+	//var _ = tran
+	var _ = input
+	//spew.Dump(input)
+	//spew.Dump(tran)
+	//return
+
+	r := mux.NewRouter()
+	// Routes consist of a path and a handler function.
+	r.Handle("/", handlers.CompressHandler(&mtr_go.MtrGet{m}))
+	r.Handle("/", handlers.CompressHandler(&mtr_go.MtrPost{m})).Methods("POST")
+	r.Handle("/multi", handlers.CompressHandler(&mtr_go.MtrPostMulti{m})).Methods("POST")
+
+	// Bind to a port and pass our router in
+	log.Print(http.ListenAndServe(":8001", r))
 
 }
+
 

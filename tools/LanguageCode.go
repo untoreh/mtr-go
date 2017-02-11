@@ -398,7 +398,7 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "fra",
 		"iso639-2/b": "fre",
 		"iso639-3":   "fra",
-		"sdl":        "frc",
+		//"sdl":        "frc",
 	},
 	"ff": map[string]string{
 		"name":       "fula, fulah, pulaar, pular",
@@ -1208,8 +1208,8 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "spa",
 		"iso639-2/b": "spa",
 		"iso639-3":   "spa",
-		"argentina":  "ess",
-		"mexico":     "esm",
+		//"argentina":  "ess",
+		//"mexico":     "esm",
 	},
 	"su": map[string]string{
 		"name":       "sundanese",
@@ -1499,9 +1499,10 @@ var Langs = map[string]map[string]string{
 		"frengly": "zhCN",
 		"promt":   "zhcn",
 		"systran": "zh-Hans",
+		"sdl":        "chi",
 	},
 	"zh-TW": map[string]string{
-		"name":    "chinese simplified",
+		"name":    "chinese traditional",
 		"code":    "zh-TW",
 		"bing":    "zh-CHT",
 		"sdl":     "cht",

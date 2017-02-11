@@ -6,11 +6,11 @@ import (
 	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"encoding/json"
+	"strings"
 )
 
-func (se *Ep) InitBing(map[string]interface{}) {
-	se.Name = "bing"
+func (se *Ep) InitPromt(map[string]interface{}) {
+	se.Name = "promt"
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -18,37 +18,48 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		se.Cak[ck] = ck + "_" + se.Name
 	}
 
-	// misc, the misc map is unique for each service
+	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 30,
-		"glue" : `; ¶; `,
-		"splitGlue" : `;\s?¶;\s?`,
+		"weight" : 10,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
-	// urls, the url map is shared because names are diverse
+
+	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"bingL" : "http://www.bing.com/translator/",
-		"bing" : "http://www.bing.com/translator/api/Translate/TranslateArray",
+		"promtL" : "http://www.online-translator.com/",
+		"promt" : "http://www.online-translator.com/services/TranslationService.asmx/GetTranslateNew",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
-	// default base request options for bing
-	// the header map is unique for each service
+	// params
+	// default base request options for promt
 	headers := map[string]string{
-		"Host" : "www.bing.com",
+		"Host" : "www.online-translator.com",
 		"Accept" : "application/json, text/javascript, */*; q=0.01",
 		"Accept-Language" : "en-US,en;q=0.5",
 		"Accept-Encoding" : "*",
-		"Referer" : "https://www.bing.com/translator/",
+		"Referer" : "http://www.online-translator.com/",
 		"Content-Type" : "application/json; charset=utf-8",
 		"X-Requested-With" : "XMLHttpRequest",
+		"Connection" : "keep-alive",
 	}
-	// copy the default request
+
+	json := map[string]string{
+		"template" : "auto",
+		"lang" : "en",
+		"limit" : "3000",
+		"useAutoDetect" : "true",
+		"key" : "",
+		"ts" : "MainSite",
+		"tid" : "",
+		"IsMobile" : "false",
+	}
+
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
 		Headers: headers,
-		UseCookieJar: true,
+		JSON: json,
 	}
 	mergo.Merge(&se.Req, tmpreq)
 
@@ -60,10 +71,13 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	}
 
 	type respJson struct {
-		Items []struct {
-			Text string
-		}
+		D struct {
+			  Result string
+			  IsWord bool
+		  }
 	}
+
+	respRxp := regexp.MustCompile(`ref_result">(.*?)<`)
 
 	se.Translate = func(source string, target string, pinput i.Pinput) i.Pinput {
 		// order of the original input array of map of numbers to slice of keys
@@ -76,26 +90,25 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		} else {
 			return nil
 		}
-		if (source == "auto") {
-			source = "-"
-		}
 
 		// setup custom keys
 		reqSrv := se.MkReq(source, target)
 
-		reqSrv.Params = map[string]string{}
-		reqSrv.Params["from"] = source
-		reqSrv.Params["to"] = target
-
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "bing", requests).([]interface{})
+		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "promt", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
-		for k := range sl_rej {
-			translation[k] = sl_rej[k].(*respJson).Items[0].Text
+		for k, rej := range sl_rej {
+			rejj := rej.(*respJson)
+			if rejj.D.IsWord {
+				translation[k] = respRxp.FindAllStringSubmatch(rejj.D.Result, -1)[0][1]
+			} else {
+				translation[k] = strings.Replace(rej.(*respJson).D.Result,
+					"<br/>", "\n", -1)
+			}
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
@@ -105,33 +118,36 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	}
 	se.GenReq = func(items map[string]interface{}) (newreq grequests.RequestOptions) {
 		data := *(items["data"].(*string))
-		newreq = *(items["req"].(*grequests.RequestOptions))
-		newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text" : data}, })
+		req := *(items["req"].(*grequests.RequestOptions))
+		newreq = req
+		dupJson := map[string]string{}
+		for k, v := range req.JSON.(map[string]string) {
+			dupJson[k] = v
+		}
+		dupJson["dirCode"] = items["source"].(string) + "-" + items["target"].(string)
+		dupJson["text"] = data
+		newreq.JSON = dupJson
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
-		se.GenC("bingL");
+		se.GenC("promtL");
 		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {
-		// regex
-		re := regexp.MustCompile(`(?m:value="?([a-z]{2,3}(-[A-Z]{2,4})?)"?>)`)
-
 		// request
-		strs := se.RetReqs(nil, "string", "GET", "bingL", map[int]*grequests.RequestOptions{}).([]string)
-		matches_a := re.FindAllStringSubmatch(strs[0], -1)
+		str := se.RetReqs(nil, "string", "GET", "promtL", map[int]*grequests.RequestOptions{}).([]string)[0]
+
+		reL := regexp.MustCompile(`value="?([a-zA-Z\-]{2,})"?`).FindAllStringSubmatch(
+			regexp.MustCompile(`LangReserv[\s\S]*?/select>`).FindAllStringSubmatch(str, -1)[0][0],
+			-1)
 
 		// loop through langs
 		langs := map[string]string{}
-		for _, group := range matches_a {
-			if _, ok := langs[group[1]]; !ok {
-				langs[group[1]] = group[1]
-			}
+		for _, l := range reL {
+			langs[l[1]] = l[1]
 		}
 		return langs
 	}
 }
-
-

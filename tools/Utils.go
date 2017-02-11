@@ -13,16 +13,19 @@ import (
 	"strings"
 	"compress/gzip"
 	"net/url"
+	"time"
 )
 
+// Ck checks if value is empty
 func Ck(set interface{}) (bool) {
-	if (set == nil || set == 0 || set == false) {
+	switch set {
+	case nil, "", 0, false:
 		return true
-	} else {
+	default:
 		return false
 	}
 }
-
+// Must returns the value of a value, error function
 func Must(i interface{}, err error) interface{} {
 	if err != nil {
 		log.Print(err)
@@ -30,6 +33,7 @@ func Must(i interface{}, err error) interface{} {
 	return i
 }
 
+// ArrayKeys returns the keys of a map as an array
 func ArrayKeys(mmap map[interface{}]interface{}) (keys []interface{}) {
 	keys = make([]interface{}, len(mmap))
 
@@ -68,6 +72,7 @@ func RegSplit(text string, delimeter string, keep bool) []string {
 	return result
 }
 
+// MapString joins the elements of a map in string
 func MapString(m MII, glue string, order SI) (string) {
 	var s bytes.Buffer
 	var keys SI
@@ -87,8 +92,9 @@ func MapString(m MII, glue string, order SI) (string) {
 	return s.String()
 }
 
+// Call calls the function of obj by name
 func Call(obj interface{}, name string, args ... interface{}) ([]reflect.Value) {
-	if (reflect.ValueOf(args[0]).CanAddr()) {
+	if (reflect.TypeOf(args[0]) != nil) {
 		inputs := make([]reflect.Value, len(args))
 		for i := range args {
 			inputs[i] = reflect.ValueOf(args[i])
@@ -99,6 +105,7 @@ func Call(obj interface{}, name string, args ... interface{}) ([]reflect.Value) 
 	}
 }
 
+// Keys is like ArrayKeys, except it is safer and uses reflection
 func Keys(v interface{}) ([]string, error) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Map {
@@ -115,6 +122,7 @@ func Keys(v interface{}) ([]string, error) {
 	return result, nil
 }
 
+// ConvertUtf8 takes a stream and returns it into a reader converting the bytes to utf8
 func ConvertUtf8(stream io.ReadCloser) io.Reader {
 	var br bytes.Buffer
 	buf := bytes.NewBuffer(nil)
@@ -132,6 +140,7 @@ func ConvertUtf8(stream io.ReadCloser) io.Reader {
 }
 
 // https://gist.github.com/sisteamnik/c866cb7eed264ea3408d
+// MbSubstr get a multibyte wise substring
 func MbSubstr(s string, from, length int) string {
 	//create array like string view
 	wb := []string{}
@@ -151,6 +160,7 @@ func MbSubstr(s string, from, length int) string {
 	return strings.Join(wb[from:to], "")
 }
 
+// GzipString encodes a string
 func GzipString(s string) string {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
@@ -167,6 +177,7 @@ func GzipString(s string) string {
 	return b.String()
 }
 
+// ParseUrls returns a map of parsed url provided a map of string urls
 func ParseUrls(urls map[string]string) (map[string]*url.URL) {
 	var e error
 	murls := map[string]*url.URL{}
@@ -178,10 +189,36 @@ func ParseUrls(urls map[string]string) (map[string]*url.URL) {
 	return murls
 }
 
+// Reverse reverts the order of a string using runes (mb safe)
 func Reverse(s string) string {
-    runes := []rune(s)
-    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-        runes[i], runes[j] = runes[j], runes[i]
-    }
-    return string(runes)
+	runes := []rune(s)
+	for i, j := 0, len(runes) - 1; i < j; i, j = i + 1, j - 1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+// RemoveDuplicates returns a slice of unique elements
+// https://www.dotnetperls.com/duplicates-go
+func removeDuplicates(elements []interface{}) []interface{} {
+	// Use map to record duplicates as we find them.
+	encountered := map[interface{}]bool{}
+	result := []interface{}{}
+
+	for v := range elements {
+		if encountered[elements[v]] == true {
+			// Do not add duplicate.
+		} else {
+			// Record this element as an encountered element.
+			encountered[elements[v]] = true
+			// Append to result slice.
+			result = append(result, elements[v])
+		}
+	}
+	// Return the new slice.
+	return result
+}
+
+func Seconds(secs int) time.Duration {
+	return time.Duration(secs) * time.Second
 }
