@@ -15,7 +15,7 @@ import (
 	"bytes"
 )
 
-func (se *Ep) InitTreu( map[string]interface{}) {
+func (se *Ep) InitTreu(map[string]interface{}) {
 	se.Name = "treu"
 
 	// setup cache keys
@@ -49,14 +49,14 @@ func (se *Ep) InitTreu( map[string]interface{}) {
 	// params
 	// default base request options for treu
 	headers := map[string]string{
-		"Host" : "api.freetranslation.com",
-		"Accept" : "application/json, text/javascript, */*; q=0.01",
+		"Host" : "itranslate4.eu",
+		"Accept" : "*/*",
 		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "https://www.freetranslation.com/",
-		"Content-Type" : "application/json",
-		"Origin" : "https://www.freetranslation.com",
+		"Accept-Encoding" : "gzip, deflate",
+		"Referer" : "http://itranslate4.eu/en/",
+		"x-requested-with" : "XMLHttpRequest",
 		"Connection" : "keep-alive",
+
 	}
 
 	query := map[string]string{
@@ -107,11 +107,12 @@ func (se *Ep) InitTreu( map[string]interface{}) {
 		// setup custom keys
 		reqSrv := se.MkReq(source, target)
 
-		reqSrv.Cookies = append(reqSrv.Cookies, &http.Cookie{
-			Name: "langPair",
-			Value: source + "-" + target,
-			Domain: "itranslate4.eu",
-		})
+		// this is not needed, also would require cookies duplication for concurrency
+		//reqSrv.Cookies = append(reqSrv.Cookies, &http.Cookie{
+		//	Name: "langPair",
+		//	Value: source + "-" + target,
+		//	Domain: "itranslate4.eu",
+		//})
 
 		// borrow a field in the request to merge all vars to be jsoned
 		reqSrv.Data = map[string]string{

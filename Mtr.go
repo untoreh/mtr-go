@@ -11,56 +11,47 @@ import (
 	"net/http"
 	"encoding/json"
 	"github.com/untoreh/mtr-go/i"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/viki-org/dnscache"
+	"net"
+	"net/http/cookiejar"
+	"sync"
 )
 
 /*
 
  */
 type Mtr struct {
-	In       string
-	Arr      bool
-	services []string
-	Ep       *services.Ep
-	Merge    bool
-	matrix   map[string]map[string]string
-	Lc       *tools.LanguageCode
-	factory  *factory.Factory
-	srv      map[string]*services.Ep
-	httpOpts map[string]interface{}
-	options  map[string]interface{}
-	Target   string
-	Source   string
+	In         string
+	Arr        bool
+	services   []string
+	Ep         *services.Ep
+	Merge      bool
+	matrix     map[string]map[string]string
+	Lc         *tools.LanguageCode
+	lock       sync.Mutex
+	factory    *factory.Factory
+	srv        map[string]*services.Ep
+	httpClient map[string]interface{}
+	options    map[string]interface{}
+	Target     string
+	Source     string
 }
 
 var mtr_v = Mtr{
-	// input
-	"",
-	// is input array ?
-	false,
-	// services list
-	[]string{"Google", "Bing", "Yandex"},
-	//[]string{"Bing"},
-	// end point parent
-	services.GEp,
-	// merge flag
-	true,
-	// matrix
-	map[string]map[string]string{},
-	// LanguageCode
-	tools.Lc,
-	// ServicesFactory
-	new(factory.Factory),
-	// Services
-	map[string]*services.Ep{},
-	// http options
-	map[string]interface{}{},
-	// mtr options
-	map[string]interface{}{},
-	// target,
-	"",
-	// source
-	"",
+	In: "",
+	Arr: false,
+	services: []string{"Google", "Bing", "Yandex"},
+	Ep: services.GEp,
+	Merge: true,
+	matrix: map[string]map[string]string{},
+	Lc: tools.Lc,
+	lock: sync.Mutex{},
+	factory: new(factory.Factory),
+	srv: map[string]*services.Ep{},
+	httpClient: map[string]interface{}{},
+	options: map[string]interface{}{},
+	Target: "",
+	Source: "",
 }
 
 func (mtr *Mtr) AssignVariables(options map[string]interface{}) {
@@ -131,17 +122,25 @@ func (mtr *Mtr) ChTr(source string, target string, input interface{}, service st
 	c <- mtr.Tr(source, target, input, service)
 }
 
+// LangToSrv converts the given (iso639/g) language code to the specific language used
+// by the service
 func (mtr *Mtr) LangToSrv(lang string, srv string) (string) {
 	var srvLangs interface{}
 	var langts interface{}
 	var found bool
 
-	if langts, found = tools.Cache.Get(mtr.Ep.Cak["langsConv"]); found {
+	if langts, found = tools.Cache.Get(mtr.srv[srv].Cak["langsConv"]); found {
 		return langts.(map[string]string)[lang];
 	}
-	if srvLangs, found = tools.Cache.Get(mtr.Ep.Cak["langs"]); !found {
+
+	mtr.lock.Lock()
+	// redo for lock
+	if langts, found = tools.Cache.Get(mtr.srv[srv].Cak["langsConv"]); found {
+		return langts.(map[string]string)[lang];
+	}
+	if srvLangs, found = tools.Cache.Get(mtr.srv[srv].Cak["langs"]); !found {
 		srvLangs = mtr.srv[srv].GetLangs()
-		tools.Cache.Set(mtr.Ep.Cak["langs"], srvLangs, -1)
+		tools.Cache.Set(mtr.srv[srv].Cak["langs"], srvLangs, -1)
 	}
 	cLang := "";
 	langts = map[string]string{}
@@ -152,11 +151,20 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) (string) {
 			cLang = l;
 		}
 	}
-	tools.Cache.Set(mtr.Ep.Cak["langsConv"], langts, -1);
+	tools.Cache.Set(mtr.srv[srv].Cak["langsConv"], langts, -1);
+	mtr.lock.Unlock()
 
 	return cLang;
 }
 
+// LangMatrix structure:
+// iso639 map -|
+//	      srv map -|
+// 		      slc string
+// -----------------------------
+// iso639 : the language code in mostly iso639 google codes format
+// srv : the name of the service
+// slc : the language code used by the service for the iso639/google code
 func (mtr *Mtr) LangMatrix() {
 	if fetch, found := tools.Cache.Get("mtr_matrix"); !found {
 		for name, obj := range mtr.srv {
@@ -175,74 +183,89 @@ func (mtr *Mtr) LangMatrix() {
 	}
 }
 
+type srvw struct {
+	srvcs map[string]int
+	sumw  int
+}
+
 func (mtr *Mtr) PickService(inputServices interface{}, source string, target string) (string) {
 	// srvcs is the list of picked services
-	srvcs := map[string]int{}
+	var ci interface{}
 	var ok bool
-	if (tools.Ck(inputServices)) {
-		for _, name := range mtr.services {
-			if srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
-				srvcs[name] = 10;
+	s := &srvw{}
+	// check if the language pair has already been the services list built
+	if ci, ok = tools.Cache.Get(source + target); !ok {
+		s.srvcs = map[string]int{}
+		if (tools.Ck(inputServices)) {
+			for _, name := range mtr.services {
+				if s.srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
+					s.srvcs[name] = 10;
+				}
 			}
-		}
-	} else {
-		switch inputServices.(type) {
-		case string:
-			inputServices := strings.Title(inputServices.(string));
-			if mtr.srv[inputServices] == nil || !mtr.srv[inputServices].Active {
-				log.Print("Service [" + inputServices + "] not active, provide keys.");
-			}
-			// if the service is available for both source and target return it
-			if !tools.Ck(mtr.matrix[source][inputServices]) && !tools.Ck(mtr.matrix[target][inputServices]) {
-				return inputServices;
-			} else {
-				log.Print("language codes: [" + source + "] or [" + target + "] not available for the service: [" + inputServices + "]");
-				// we return nothing because the service requested does not provide the languages
-				return ""
-			}
-		case map[string]int:
-			for k, v := range inputServices.(map[string]int) {
-				srvcs[strings.Title(k)] = v;
-			}
-		case []string:
-			for _, v := range inputServices.([]string) {
-				name := strings.Title(v);
-				if srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
-					srvcs[name] = 10;
+		} else {
+			switch inputServices.(type) {
+			case string:
+				inputServices := strings.Title(inputServices.(string));
+				if mtr.srv[inputServices] == nil || !mtr.srv[inputServices].Active {
+					log.Print("Service [" + inputServices + "] not active, provide keys.");
+				}
+				// if the service is available for both source and target return it
+				if !tools.Ck(mtr.matrix[source][inputServices]) && !tools.Ck(mtr.matrix[target][inputServices]) {
+					return inputServices;
+				} else {
+					log.Print("language codes: [" + source + "] or [" + target + "] not available for the service: [" + inputServices + "]");
+					// we return nothing because the service requested does not provide the languages
+					return ""
+				}
+			case map[string]int:
+				for k, v := range inputServices.(map[string]int) {
+					s.srvcs[strings.Title(k)] = v;
+				}
+			case []string:
+				for _, v := range inputServices.([]string) {
+					name := strings.Title(v);
+					if s.srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
+						s.srvcs[name] = 10;
+					}
 				}
 			}
 		}
-	}
 
-	for n := range srvcs {
-		if tools.Ck(mtr.matrix[source][n]) || tools.Ck(mtr.matrix[target][n]) {
-			delete(srvcs, n)
+		for n := range s.srvcs {
+			if tools.Ck(mtr.matrix[source][n]) || tools.Ck(mtr.matrix[target][n]) {
+				delete(s.srvcs, n)
+			}
 		}
+		// store the list of services for the language pair in cache
+		s.sumw = 0
+		for _, w := range s.srvcs {
+			s.sumw += w
+		}
+		tools.Cache.Set(source + target, s, -1)
+	} else {
+		s = ci.(*srvw)
 	}
-	spew.Dump(srvcs)
-	if tools.Ck(srvcs) {
-		log.Print("No service supplied provides the language translation requested.");
-	}
-	var sum = 0
-	for _, w := range srvcs {
-		sum += w
-	}
-	r := rand.Intn(sum)
 
-	for name, s := range srvcs {
+	if s.sumw == 0 {
+		log.Printf("No service supplied provides the requested language translation [%v-%v]", source, target);
+		return ""
+	}
+
+	r := rand.Intn(s.sumw)
+
+	for name, s := range s.srvcs {
 		r = r - s;
 		if r < 0 {
 			return name;
 		}
 	}
-
 	return ""
 }
 
 func (mtr *Mtr) MakeServices() {
 	// http client
 	if _, ok := mtr.options["httpOpts"]; ok {
-		mergo.Merge(&mtr.httpOpts, mtr.options["request"])
+		mergo.Merge(&mtr.httpClient, mtr.options["httpClient"])
 	}
 	// generate services
 	if _, ok := mtr.options["services"]; ok {
@@ -276,6 +299,27 @@ func (mtr *Mtr) MakeServices() {
 			mtr.srv[name] = tools.Call(mtr.factory, strings.Title(name), mtr.options)[0].Interface().(*services.Ep);
 		}
 	}
+	// Share the httpClient across the services, also with dns caching
+	// and with http keep-alive, and with initd cookieJar
+	dnsCa := dnscache.New(tools.Seconds(5 * 80))
+	cJar, _ := cookiejar.New(nil)
+	httpCl := &http.Client{
+		Jar: cJar,
+		Transport: &http.Transport{
+			Dial: func(network string, address string) (net.Conn, error) {
+				separator := strings.LastIndex(address, ":")
+				ip, _ := dnsCa.FetchOneString(address[:separator])
+				return (&net.Dialer{
+					Timeout:   tools.Seconds(30),
+					KeepAlive: tools.Seconds(300),
+				}).Dial("tcp", ip + address[separator:])
+			},
+		},
+	}
+	for k := range mtr.srv {
+		mtr.srv[k].Req.HTTPClient = httpCl
+	}
+
 	// make sure at least one service is initialized
 	for k := range mtr.srv {
 		if mtr.srv[k].Active {
@@ -300,8 +344,7 @@ type MtrGet struct {
 func (mtr *MtrGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	tran := mtr.Tr(q.Get("sl"), q.Get("tl"), q.Get("q"), q.Get("sv"))
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	tools.Headers(&w)
 	if err := json.NewEncoder(w).Encode(tran); err != nil {
 		log.Print(err)
 	}
@@ -322,8 +365,7 @@ func (mtr *MtrPost) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	tran := mtr.Tr(q.Get("sl"), q.Get("tl"), data, q.Get("sv"))
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	tools.Headers(&w)
 	if err := json.NewEncoder(w).Encode(tran); err != nil {
 		log.Print(err)
 	}
@@ -364,8 +406,7 @@ func (mtr *MtrPostMulti) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tran[l.(string)] = <-sl_c[cc]
 		cc++
 	}
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	tools.Headers(&w)
 	if err := json.NewEncoder(w).Encode(tran); err != nil {
 		log.Print(err)
 	}

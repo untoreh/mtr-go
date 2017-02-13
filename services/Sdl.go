@@ -123,13 +123,14 @@ func (se *Ep) InitSdl(map[string]interface{}) {
 			FindAllStringSubmatch(
 			se.RetReqs(nil, "string", "GET", "sdlL", map[int]*grequests.RequestOptions{}).([]string)[0],
 			-1)[0][1]
-		reL := regexp.MustCompile(`(?m:code:"(.*?)")`).
+		reL := regexp.MustCompile(`Q1((.*?code:"(.*?)".*?)*)`).
 			FindAllStringSubmatch(
 			se.RetReqs(nil, "string", "GET", "sdlL1", map[int]*grequests.RequestOptions{}).([]string)[0],
 			-1)
+		reL1 := regexp.MustCompile(`code:"(.*?)"`).FindAllStringSubmatch(reL[0][0], -1)
 		// loop through langs
 		langs := map[string]string{}
-		for _, l := range reL {
+		for _, l := range reL1 {
 			langs[l[1]] = l[1]
 		}
 		if langs == nil {

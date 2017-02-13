@@ -6,7 +6,6 @@ import (
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
 	"log"
-	"net/http/cookiejar"
 	"bytes"
 )
 
@@ -115,22 +114,28 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		// to the translation endpoint TODO refactor so that GenC handles custom requests
 		//se.GenC("frengly");
 		if _, ok := t.Cache.Get(se.Cak["cookies"]); !ok {
-			se.CookieJar, _ = cookiejar.New(nil)
-			// generate the cookies
-			se.RetReqs(nil, "", "POST", "frengly", map[int]*grequests.RequestOptions{
-				0: &grequests.RequestOptions{
-					Headers: se.Req.Headers,
-					CookieJar: se.CookieJar,
-					UseCookieJar: true,
-					JSON: map[string]string{
-						"srcLang" : "en",
-						"destLang" : "es",
-						"text" : "Hello.",
-					}},
-			})
+			se.CookEx.Lock()
+			if _, ok := t.Cache.Get(se.Cak["cookies"]); ok {
+				se.CookEx.Unlock()
+			} else {
+				se.CookieJar = se.Req.HTTPClient.Jar
+				// generate the cookies
+				se.RetReqs(nil, "", "POST", "frengly", map[int]*grequests.RequestOptions{
+					0: {
+						Headers: se.Req.Headers,
+						CookieJar: se.CookieJar,
+						UseCookieJar: true,
+						JSON: map[string]string{
+							"srcLang" : "en",
+							"destLang" : "es",
+							"text" : "Hello.",
+						}},
+				})
 
-			se.Req.Cookies = se.CookieJar.Cookies(se.Urls["frengly"])
-			t.Cache.Set(se.Cak["cookies"], se.CookieJar.Cookies(se.Urls["frengly"]), se.ttl())
+				se.Req.Cookies = se.CookieJar.Cookies(se.Urls["frengly"])
+				t.Cache.Set(se.Cak["cookies"], se.CookieJar.Cookies(se.Urls["frengly"]), se.ttl())
+				se.CookEx.Unlock()
+			}
 		}
 		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
 		return qinput, order

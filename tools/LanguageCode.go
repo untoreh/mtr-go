@@ -245,15 +245,16 @@ var Langs = map[string]map[string]string{
 		"iso639-2/b": "nya",
 		"iso639-3":   "nya",
 	},
-	"zh": map[string]string{
-		"name":       "chinese",
-		"native":     "中文 (zhōngwén), 汉语, 漢語",
-		"iso639-1":   "zh",
-		"iso639-2/t": "zho",
-		"iso639-2/b": "chi",
-		"iso639-3":   "zho + 13",
-		"google":     "zh",
-	},
+	//"zh": map[string]string{
+	//	"name":       "chinese",
+	//	"native":     "中文 (zhōngwén), 汉语, 漢語",
+	//	"iso639-1":   "zh",
+	//	"iso639-2/t": "zho",
+	//	"iso639-2/b": "chi",
+	//	"iso639-3":   "zho + 13",
+	//	"google":     "zh",
+	//	"treu": "zh-CN",
+	//},
 
 	"cv": map[string]string{
 		"name":       "chuvash",
@@ -398,7 +399,6 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "fra",
 		"iso639-2/b": "fre",
 		"iso639-3":   "fra",
-		//"sdl":        "frc",
 	},
 	"ff": map[string]string{
 		"name":       "fula, fulah, pulaar, pular",
@@ -1208,8 +1208,6 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "spa",
 		"iso639-2/b": "spa",
 		"iso639-3":   "spa",
-		//"argentina":  "ess",
-		//"mexico":     "esm",
 	},
 	"su": map[string]string{
 		"name":       "sundanese",
@@ -1500,6 +1498,7 @@ var Langs = map[string]map[string]string{
 		"promt":   "zhcn",
 		"systran": "zh-Hans",
 		"sdl":        "chi",
+		"treu": "zh",
 	},
 	"zh-TW": map[string]string{
 		"name":    "chinese traditional",

@@ -14,6 +14,7 @@ import (
 	"compress/gzip"
 	"net/url"
 	"time"
+	"net/http"
 )
 
 // Ck checks if value is empty
@@ -221,4 +222,12 @@ func removeDuplicates(elements []interface{}) []interface{} {
 
 func Seconds(secs int) time.Duration {
 	return time.Duration(secs) * time.Second
+}
+
+func Headers(w *http.ResponseWriter) {
+	(*w).Header().Set("Content-Type", "application/json; charset=UTF-8")
+	(*w).Header().Set("Connection", "Keep-Alive")
+	(*w).Header().Set("Keep-Alive", "300")
+	// finish header
+	(*w).WriteHeader(http.StatusOK)
 }

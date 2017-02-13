@@ -9,12 +9,12 @@ import (
 	t "github.com/untoreh/mtr-go/tools"
 	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"net/http/cookiejar"
 	"github.com/untoreh/mtr-go/i"
 	"time"
 	"net/url"
 	"log"
 	"sync"
+	"net/http"
 )
 
 type Ep struct {
@@ -25,7 +25,7 @@ type Ep struct {
 	UrlStr    map[string]string
 	Cak       map[string]string
 	CaPrefix  []string
-	CookieJar *cookiejar.Jar
+	CookieJar http.CookieJar
 	CookEx    sync.RWMutex
 	CookC     *sync.Cond
 	Req       grequests.RequestOptions
@@ -60,7 +60,6 @@ func (ep *Ep) epDefaults() {
 		Headers: map[string]string{
 			"User-Agent" : agent.(string),
 		},
-		DialKeepAlive: t.Seconds(60),
 	}
 	ep.Misc = map[string]interface{}{
 		"glue" : ` ; ; `,
@@ -85,14 +84,13 @@ func (ep *Ep) GenC(serviceL string) bool {
 	ep.CookEx.Lock()
 	// redo the check in case another routine already set the cookies
 	if _, ok := t.Cache.Get(ep.Cak["cookies"]); ok {
+		ep.CookEx.Unlock()
 		return false
 	}
-	ep.CookieJar, _ = cookiejar.New(nil)
+	ep.CookieJar = ep.Req.HTTPClient.Jar
 	// generate the cookies
-	ep.DoReqs("GET", serviceL, map[int]*grequests.RequestOptions{
-		0: &grequests.RequestOptions{
-			CookieJar: ep.CookieJar,
-			UseCookieJar: true, },
+	ep.RetReqs(nil, "", "GET", serviceL, map[int]*grequests.RequestOptions{
+		0: {CookieJar: ep.CookieJar, UseCookieJar: true},
 	})
 	ep.Req.Cookies = ep.CookieJar.Cookies(ep.Urls[serviceL])
 	t.Cache.Set(ep.Cak["cookies"], ep.CookieJar.Cookies(ep.Urls[serviceL]), ep.ttl())
@@ -214,67 +212,68 @@ func (ep *Ep) JoinTranslated(str_ar []interface{}, input interface{}, translatio
 	return translated
 }
 
+type kr struct {
+	K int
+	O *grequests.Response
+}
+
 func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs map[int]*grequests.RequestOptions) (interface{}) {
-	sl_res := ep.DoReqs(verb, url, reqs)
+	l := len(reqs)
+	cr := make(chan kr)
+
+	if (l == 0) {
+		// we assign 1 element to the map so that the switch for loops run (once)
+		l = 1
+		reqs = map[int]*grequests.RequestOptions{0:{}}
+		go ep.reqResponse(verb, url, reqs[0], 0, cr)
+	} else {
+		for k, reqo := range reqs {
+			go ep.reqResponse(verb, url, reqo, k, cr)
+		}
+	}
+
 	switch tp {
 	case "bytes":
-		dst := make([][]byte, len(sl_res))
-		for k := range sl_res {
-			dst[k] = sl_res[k].Bytes()
-			sl_res[k].Close()
+		dst := make([][]byte, l)
+		for range reqs {
+			kr := <-cr
+			dst[kr.K] = kr.O.Bytes()
+			kr.O.Close()
 		}
 		return dst
 	case "string":
-		dst := make([]string, len(sl_res))
-		for k := range sl_res {
-			dst[k] = sl_res[k].String()
-			sl_res[k].Close()
+		dst := make([]string, l)
+		for range reqs {
+			kr := <-cr
+			dst[kr.K] = kr.O.String()
+			kr.O.Close()
 		}
 		return dst
 	case "json":
-		dstSl := make([]interface{}, len(sl_res))
-		for k := range sl_res {
-			if err := sl_res[k].JSON(dst); err != nil {
+		dstSl := make([]interface{}, l)
+		for range reqs {
+			kr := <-cr
+			if err := kr.O.JSON(dst); err != nil {
 				log.Print(err)
 			}
-			sl_res[k].Close()
-			dstSl[k] = dst
+			kr.O.Close()
+			dstSl[kr.K] = dst
 		}
 		return dstSl
 	default:
-		for k := range sl_res {
-			sl_res[k].Close()
+		for range reqs {
+			kr := <-cr
+			kr.O.Close()
 		}
 		return nil
 	}
 }
 
-func (ep *Ep) DoReqs(verb string, url string, reqs map[int]*grequests.RequestOptions) ([]*grequests.Response) {
-	l := len(reqs)
-	if (l == 0) {
-		c := make(chan *grequests.Response)
-		go ep.reqResponse(verb, url, &grequests.RequestOptions{}, c)
-		resp := <-c
-		return []*grequests.Response{resp}
-	}
-	sl_res := make([]*grequests.Response, l)
-	sl_cr := make([]chan *grequests.Response, l)
-	for k, req := range reqs {
-		sl_cr[k] = make(chan *grequests.Response)
-		go ep.reqResponse(verb, url, req, sl_cr[k])
-	}
-	for k := range reqs {
-		sl_res[k] = <-sl_cr[k]
-	}
-	return sl_res
-}
-
-func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOptions, c chan *grequests.Response) {
+func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOptions, k int, c chan kr) {
 	for ret := 0; ret < 5; ret++ {
-		println(urlstr)
 		if resp, err := grequests.Req(verb, ep.UrlStr[urlstr], reqo); t.Ck(err) && resp.StatusCode == 200 {
 			// convert ot json struct
-			c <- resp
+			c <- kr{k, resp }
 			return
 		} else {
 			// don't defer this to avoid too many connections on multiple retries
@@ -284,7 +283,7 @@ func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOpt
 			time.Sleep(ep.Misc["sleep"].(time.Duration))
 		}
 	}
-	c <- &grequests.Response{}
+	c <- kr{k, &grequests.Response{} }
 }
 
 func (ep *Ep) ttl() (time.Duration) {
