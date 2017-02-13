@@ -264,7 +264,7 @@ func (mtr *Mtr) PickService(inputServices interface{}, source string, target str
 
 func (mtr *Mtr) MakeServices() {
 	// http client
-	if _, ok := mtr.options["httpOpts"]; ok {
+	if _, ok := mtr.options["httpClient"]; ok {
 		mergo.Merge(&mtr.httpClient, mtr.options["httpClient"])
 	}
 	// generate services
