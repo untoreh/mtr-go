@@ -105,3 +105,4 @@ vendor/
 # End of https://www.gitignore.io/api/intellij,go,linux
 /main
 /bin/
+!/bin/main.go

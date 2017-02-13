@@ -1,10 +1,8 @@
 # Mtr-go
 Multi language translator api wrapper in Go, translate or compare strings or arrays of strings with language pairs supported by multiple services.
-Install
 
 [![Build Status](https://travis-ci.org/untoreh/mtr.svg?branch=master)](https://travis-ci.org/untoreh/mtr)
 [![CodeFactor](https://www.codefactor.io/repository/github/untoreh/mtr-go/badge)](https://www.codefactor.io/repository/github/untoreh/mtr-go)
-
 
 ## Install 
 Download the bin from the release page.
