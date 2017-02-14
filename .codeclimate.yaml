@@ -1,8 +1,16 @@
 ---
 engines:
+  golint:
+   	enabled: true
+  gofmt:
+    enabled: true
+  govet:
+    enabled: true
   fixme:
     enabled: true
 ratings:
-  paths: []
+  paths:
+  - "services/*"
+  - "**.go"
 exclude_paths:
 - tests/
