@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/imdario/mergo"
+	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/factory"
 	"github.com/untoreh/mtr-go/i"
 	"github.com/untoreh/mtr-go/services"
