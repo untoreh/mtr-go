@@ -1,17 +1,18 @@
 package services
 
 import (
+	"html"
+	"log"
 	"regexp"
+	"strings"
+
 	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"log"
-	"html"
-	"strings"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
-func (se *Ep) InitMultillect( map[string]interface{}) {
+func (se *Ep) InitMultillect(map[string]interface{}) {
 	se.Name = "multillect"
 
 	// setup cache keys
@@ -23,28 +24,27 @@ func (se *Ep) InitMultillect( map[string]interface{}) {
 	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 10,
+		"weight": 10,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"multillectL" : "https://translate.multillect.com",
-		"multillect" : "https://translate.multillect.com/form.json",
+		"multillectL": "https://translate.multillect.com",
+		"multillect":  "https://translate.multillect.com/form.json",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// params
 	// default base request options for multillect
 	headers := map[string]string{
-		"Host" : "translate.multillect.com",
-		"Accept" : "application/json, text/javascript, */*; q=0.01",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "https://translate.multillect.com/",
-		"x-requested-with" : "XMLHttpRequest",
-		"Connection" : "keep-alive",
-
+		"Host":             "translate.multillect.com",
+		"Accept":           "application/json, text/javascript, */*; q=0.01",
+		"Accept-Language":  "en-US,en;q=0.5",
+		"Accept-Encoding":  "*",
+		"Referer":          "https://translate.multillect.com/",
+		"x-requested-with": "XMLHttpRequest",
+		"Connection":       "keep-alive",
 	}
 
 	tmpreq := se.Req
@@ -91,7 +91,7 @@ func (se *Ep) InitMultillect( map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -101,16 +101,16 @@ func (se *Ep) InitMultillect( map[string]interface{}) {
 
 		newreq = req
 		newreq.Params = map[string]string{
-			"from" : items["source"].(string),
-			"to" : items["target"].(string),
-			"text" : data,
+			"from": items["source"].(string),
+			"to":   items["target"].(string),
+			"text": data,
 		}
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
-		se.GenC("multillectL");
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		se.GenC("multillectL")
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

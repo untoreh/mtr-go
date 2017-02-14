@@ -1,15 +1,17 @@
 package tools
 
 import (
-	"github.com/patrickmn/go-cache"
 	"bytes"
 	"encoding/gob"
 	"log"
+
+	"github.com/patrickmn/go-cache"
 )
 
-type Ca struct{
+type Ca struct {
 	*cache.Cache
 }
+
 var Cache = Ca{cache.New(-1, Seconds(30))}
 var NoExpiration = cache.NoExpiration
 
@@ -24,7 +26,7 @@ func (c Ca) ToBytes(value interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (c Ca) ToTypes(bts []byte) (interface{}) {
+func (c Ca) ToTypes(bts []byte) interface{} {
 	buf := bytes.NewBuffer(bts)
 	dec := gob.NewDecoder(buf)
 	var ho interface{}
@@ -43,7 +45,7 @@ func (c Ca) SetBytes(key string, value interface{}) error {
 
 func (c Ca) GetBytes(key string) interface{} {
 	value, found := Cache.Get(key)
-	if !found  {
+	if !found {
 		log.Print("Key not found in cache")
 	}
 	return c.ToTypes(value.([]byte))

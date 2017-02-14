@@ -1,12 +1,13 @@
 package services
 
 import (
+	"bytes"
+	"log"
+
 	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"log"
-	"bytes"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitFrengly(map[string]interface{}) {
@@ -21,34 +22,34 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 10,
+		"weight": 10,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"frengly" : "http://www.frengly.com/frengly/data/translate/",
-		"frenglyL" : "http://www.frengly.com/translate",
-		"frenglyL2" : "http://www.frengly.com/frengly/static/langs.json",
+		"frengly":   "http://www.frengly.com/frengly/data/translate/",
+		"frenglyL":  "http://www.frengly.com/translate",
+		"frenglyL2": "http://www.frengly.com/frengly/static/langs.json",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// params
 	// default base request options for frengly
 	headers := map[string]string{
-		"Host" : "www.frengly.com",
-		"Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "http://www.frengly.com/translate",
-		"Content-Type" : "application/json;charset=utf-8",
-		"x-requested-with" : "XMLHttpRequest",
-		"Connection" : "keep-alive",
+		"Host":             "www.frengly.com",
+		"Accept":           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+		"Accept-Language":  "en-US,en;q=0.5",
+		"Accept-Encoding":  "*",
+		"Referer":          "http://www.frengly.com/translate",
+		"Content-Type":     "application/json;charset=utf-8",
+		"x-requested-with": "XMLHttpRequest",
+		"Connection":       "keep-alive",
 	}
 
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
-		Headers: headers,
+		Headers:      headers,
 		UseCookieJar: true,
 	}
 	mergo.Merge(&se.Req, tmpreq)
@@ -94,7 +95,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -103,9 +104,9 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		req := *(items["req"].(*grequests.RequestOptions))
 		newreq = req
 		newreq.JSON = map[string]string{
-			"srcLang" : items["source"].(string),
-			"destLang" : items["target"].(string),
-			"text" : data,
+			"srcLang":  items["source"].(string),
+			"destLang": items["target"].(string),
+			"text":     data,
 		}
 		return
 	}
@@ -122,13 +123,13 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 				// generate the cookies
 				se.RetReqs(nil, "", "POST", "frengly", map[int]*grequests.RequestOptions{
 					0: {
-						Headers: se.Req.Headers,
-						CookieJar: se.CookieJar,
+						Headers:      se.Req.Headers,
+						CookieJar:    se.CookieJar,
 						UseCookieJar: true,
 						JSON: map[string]string{
-							"srcLang" : "en",
-							"destLang" : "es",
-							"text" : "Hello.",
+							"srcLang":  "en",
+							"destLang": "es",
+							"text":     "Hello.",
 						}},
 				})
 
@@ -137,7 +138,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 				se.CookEx.Unlock()
 			}
 		}
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

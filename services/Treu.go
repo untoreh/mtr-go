@@ -1,18 +1,19 @@
 package services
 
 import (
-	"regexp"
-	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
-	"github.com/levigross/grequests"
-	"github.com/untoreh/mtr-go/i"
-	"log"
-	"net/http"
+	"bytes"
 	"encoding/json"
+	"log"
 	"math"
 	"math/rand"
+	"net/http"
+	"regexp"
 	"strconv"
-	"bytes"
+
+	"github.com/imdario/mergo"
+	"github.com/levigross/grequests"
+	"github.com/untoreh/mtr-go/i"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitTreu(map[string]interface{}) {
@@ -27,47 +28,46 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 10,
-		"glue" : ` \n¶\n `,
-		"splitGlue" : `/\s?¶\s?/`,
-		"treu_req_data" : map[string]string{
-			"dom" : "",
-			"type" : "text",
-			"trs_open_count" : "6",
-			"trs_max_count" : "100",
+		"weight":    10,
+		"glue":      ` \n¶\n `,
+		"splitGlue": `/\s?¶\s?/`,
+		"treu_req_data": map[string]string{
+			"dom":            "",
+			"type":           "text",
+			"trs_open_count": "6",
+			"trs_max_count":  "100",
 		},
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"treuL" : "http://itranslate4.eu/api/",
-		"treu" : "http://itranslate4.eu/csa",
+		"treuL": "http://itranslate4.eu/api/",
+		"treu":  "http://itranslate4.eu/csa",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// params
 	// default base request options for treu
 	headers := map[string]string{
-		"Host" : "itranslate4.eu",
-		"Accept" : "*/*",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "gzip, deflate",
-		"Referer" : "http://itranslate4.eu/en/",
-		"x-requested-with" : "XMLHttpRequest",
-		"Connection" : "keep-alive",
-
+		"Host":             "itranslate4.eu",
+		"Accept":           "*/*",
+		"Accept-Language":  "en-US,en;q=0.5",
+		"Accept-Encoding":  "gzip, deflate",
+		"Referer":          "http://itranslate4.eu/en/",
+		"x-requested-with": "XMLHttpRequest",
+		"Connection":       "keep-alive",
 	}
 
 	query := map[string]string{
-		"func" : "translate",
-		"origin" : "text",
+		"func":   "translate",
+		"origin": "text",
 	}
 
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
 		Headers: headers,
-		Params: query,
+		Params:  query,
 	}
 	mergo.Merge(&se.Req, tmpreq)
 
@@ -116,9 +116,9 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 
 		// borrow a field in the request to merge all vars to be jsoned
 		reqSrv.Data = map[string]string{
-			"src" : source,
-			"trg" : target,
-			"uid" : reqSrv.Cookies[1].Value,
+			"src": source,
+			"trg": target,
+			"uid": reqSrv.Cookies[1].Value,
 		}
 		mergo.Merge(&reqSrv.Data, se.Misc["treu_req_data"])
 
@@ -134,9 +134,9 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 		}
 
 		for k, tid := range tids {
-			jsTid, _ := json.Marshal(map[string]string{"tid" : tid })
+			jsTid, _ := json.Marshal(map[string]string{"tid": tid})
 			requests[k].Params["data"] = string(jsTid)
-			requests[k].Params["rand"] = strconv.FormatFloat(float64(rand.Intn(math.MaxInt32)) / math.MaxInt32, 'f', -1, 32)
+			requests[k].Params["rand"] = strconv.FormatFloat(float64(rand.Intn(math.MaxInt32))/math.MaxInt32, 'f', -1, 32)
 			requests[k].Params["func"] = "translate_poll"
 		}
 
@@ -163,7 +163,7 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -199,20 +199,20 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 			cookies := se.CookieJar.Cookies(se.Urls["treuL"])
 			cookies = append(cookies,
 				&http.Cookie{
-					Name: "acceptCookies",
-					Value: "Y",
+					Name:   "acceptCookies",
+					Value:  "Y",
 					Domain: "itranslate4.eu",
 				},
 				&http.Cookie{
-					Name: "PLAY_LANG",
-					Value: "en",
+					Name:   "PLAY_LANG",
+					Value:  "en",
 					Domain: "itranslate4.eu",
 				},
 			)
 			se.Req.Cookies = cookies
 			se.CookieJar.SetCookies(se.Urls["treuL"], cookies)
 		}
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {
@@ -220,12 +220,12 @@ func (se *Ep) InitTreu(map[string]interface{}) {
 		// then get the language codes and loop through them
 		ma := regexp.MustCompile(`\{"src":(.*?)]`).
 			FindAllStringSubmatch(
-			se.RetReqs(nil, "string", "GET", "treuL", map[int]*grequests.RequestOptions{}).([]string)[0],
-			-1)[0][1]
+				se.RetReqs(nil, "string", "GET", "treuL", map[int]*grequests.RequestOptions{}).([]string)[0],
+				-1)[0][1]
 		reL := regexp.MustCompile(`"(.*?)"`).
 			FindAllStringSubmatch(
-			ma,
-			-1)
+				ma,
+				-1)
 		// loop through langs
 		langs := map[string]string{}
 		for _, l := range reL {

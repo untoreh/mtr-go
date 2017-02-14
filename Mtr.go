@@ -1,20 +1,21 @@
 package mtr_go
 
 import (
-	"github.com/untoreh/mtr-go/tools"
-	"github.com/imdario/mergo"
-	"strings"
+	"encoding/json"
 	"log"
 	"math/rand"
-	"github.com/untoreh/mtr-go/services"
-	"github.com/untoreh/mtr-go/factory"
-	"net/http"
-	"encoding/json"
-	"github.com/untoreh/mtr-go/i"
-	"github.com/viki-org/dnscache"
 	"net"
+	"net/http"
 	"net/http/cookiejar"
+	"strings"
 	"sync"
+
+	"github.com/imdario/mergo"
+	"github.com/untoreh/mtr-go/factory"
+	"github.com/untoreh/mtr-go/i"
+	"github.com/untoreh/mtr-go/services"
+	"github.com/untoreh/mtr-go/tools"
+	"github.com/viki-org/dnscache"
 )
 
 /*
@@ -38,20 +39,20 @@ type Mtr struct {
 }
 
 var mtr_v = Mtr{
-	In: "",
-	Arr: false,
-	services: []string{"Google", "Bing", "Yandex"},
-	Ep: services.GEp,
-	Merge: true,
-	matrix: map[string]map[string]string{},
-	Lc: tools.Lc,
-	lock: sync.Mutex{},
-	factory: new(factory.Factory),
-	srv: map[string]*services.Ep{},
+	In:         "",
+	Arr:        false,
+	services:   []string{"Google", "Bing", "Yandex"},
+	Ep:         services.GEp,
+	Merge:      true,
+	matrix:     map[string]map[string]string{},
+	Lc:         tools.Lc,
+	lock:       sync.Mutex{},
+	factory:    new(factory.Factory),
+	srv:        map[string]*services.Ep{},
 	httpClient: map[string]interface{}{},
-	options: map[string]interface{}{},
-	Target: "",
-	Source: "",
+	options:    map[string]interface{}{},
+	Target:     "",
+	Source:     "",
 }
 
 func (mtr *Mtr) AssignVariables(options map[string]interface{}) {
@@ -59,12 +60,12 @@ func (mtr *Mtr) AssignVariables(options map[string]interface{}) {
 	mergo.Merge(&mtr.options, options)
 }
 
-func (mtr *Mtr) Tr(source string, target string, input interface{}, service string) (interface{}) {
+func (mtr *Mtr) Tr(source string, target string, input interface{}, service string) interface{} {
 	if input == nil || input == 0 {
-		return false;
+		return false
 	}
 
-	service = mtr.PickService(service, source, target);
+	service = mtr.PickService(service, source, target)
 
 	// no service available for the languages
 	if service == "" {
@@ -72,12 +73,12 @@ func (mtr *Mtr) Tr(source string, target string, input interface{}, service stri
 	}
 
 	/* Panics here are not really supposed to happen because @pickService
-	 makes sure the service supports the language pair */
+	makes sure the service supports the language pair */
 	if source = mtr.LangToSrv(source, service); tools.Ck(source) {
-		log.Print("Language " + source + "not supported by " + service);
+		log.Print("Language " + source + "not supported by " + service)
 	}
 	if target = mtr.LangToSrv(target, service); tools.Ck(target) {
-		log.Print("Language " + target + "not supported by " + service);
+		log.Print("Language " + target + "not supported by " + service)
 	}
 
 	// in case of adding default language pair
@@ -113,7 +114,7 @@ func (mtr *Mtr) Tr(source string, target string, input interface{}, service stri
 	case string:
 		inputstr := input.(string)
 		pinput["0"] = &inputstr
-		return mtr.srv[service].Translate(source, target, pinput)["0"];
+		return mtr.srv[service].Translate(source, target, pinput)["0"]
 	}
 	return false
 }
@@ -124,37 +125,37 @@ func (mtr *Mtr) ChTr(source string, target string, input interface{}, service st
 
 // LangToSrv converts the given (iso639/g) language code to the specific language used
 // by the service
-func (mtr *Mtr) LangToSrv(lang string, srv string) (string) {
+func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 	var srvLangs interface{}
 	var langts interface{}
 	var found bool
 
 	if langts, found = tools.Cache.Get(mtr.srv[srv].Cak["langsConv"]); found {
-		return langts.(map[string]string)[lang];
+		return langts.(map[string]string)[lang]
 	}
 
 	mtr.lock.Lock()
 	// redo for lock
 	if langts, found = tools.Cache.Get(mtr.srv[srv].Cak["langsConv"]); found {
-		return langts.(map[string]string)[lang];
+		return langts.(map[string]string)[lang]
 	}
 	if srvLangs, found = tools.Cache.Get(mtr.srv[srv].Cak["langs"]); !found {
 		srvLangs = mtr.srv[srv].GetLangs()
 		tools.Cache.Set(mtr.srv[srv].Cak["langs"], srvLangs, -1)
 	}
-	cLang := "";
+	cLang := ""
 	langts = map[string]string{}
 	for _, l := range srvLangs.(map[string]string) {
-		c := mtr.Lc.Convert(l);
-		langts.(map[string]string)[c] = l;
+		c := mtr.Lc.Convert(l)
+		langts.(map[string]string)[c] = l
 		if lang == c {
-			cLang = l;
+			cLang = l
 		}
 	}
-	tools.Cache.Set(mtr.srv[srv].Cak["langsConv"], langts, -1);
+	tools.Cache.Set(mtr.srv[srv].Cak["langsConv"], langts, -1)
 	mtr.lock.Unlock()
 
-	return cLang;
+	return cLang
 }
 
 // LangMatrix structure:
@@ -168,16 +169,16 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) (string) {
 func (mtr *Mtr) LangMatrix() {
 	if fetch, found := tools.Cache.Get("mtr_matrix"); !found {
 		for name, obj := range mtr.srv {
-			if (obj.Active == true) {
+			if obj.Active == true {
 				for _, l := range obj.GetLangs() {
 					if _, ok := mtr.matrix[mtr.Lc.Convert(l)]; !ok {
 						mtr.matrix[mtr.Lc.Convert(l)] = map[string]string{}
 					}
-					mtr.matrix[mtr.Lc.Convert(l)][name] = l;
+					mtr.matrix[mtr.Lc.Convert(l)][name] = l
 				}
 			}
 		}
-		tools.Cache.Set("mtr_matrix", mtr.matrix, -1);
+		tools.Cache.Set("mtr_matrix", mtr.matrix, -1)
 	} else {
 		mtr.matrix = fetch.(map[string]map[string]string)
 	}
@@ -188,7 +189,7 @@ type srvw struct {
 	sumw  int
 }
 
-func (mtr *Mtr) PickService(inputServices interface{}, source string, target string) (string) {
+func (mtr *Mtr) PickService(inputServices interface{}, source string, target string) string {
 	// srvcs is the list of picked services
 	var ci interface{}
 	var ok bool
@@ -196,36 +197,36 @@ func (mtr *Mtr) PickService(inputServices interface{}, source string, target str
 	// check if the language pair has already been the services list built
 	if ci, ok = tools.Cache.Get(source + target); !ok {
 		s.srvcs = map[string]int{}
-		if (tools.Ck(inputServices)) {
+		if tools.Ck(inputServices) {
 			for _, name := range mtr.services {
 				if s.srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
-					s.srvcs[name] = 10;
+					s.srvcs[name] = 10
 				}
 			}
 		} else {
 			switch inputServices.(type) {
 			case string:
-				inputServices := strings.Title(inputServices.(string));
+				inputServices := strings.Title(inputServices.(string))
 				if mtr.srv[inputServices] == nil || !mtr.srv[inputServices].Active {
-					log.Print("Service [" + inputServices + "] not active, provide keys.");
+					log.Print("Service [" + inputServices + "] not active, provide keys.")
 				}
 				// if the service is available for both source and target return it
 				if !tools.Ck(mtr.matrix[source][inputServices]) && !tools.Ck(mtr.matrix[target][inputServices]) {
-					return inputServices;
+					return inputServices
 				} else {
-					log.Print("language codes: [" + source + "] or [" + target + "] not available for the service: [" + inputServices + "]");
+					log.Print("language codes: [" + source + "] or [" + target + "] not available for the service: [" + inputServices + "]")
 					// we return nothing because the service requested does not provide the languages
 					return ""
 				}
 			case map[string]int:
 				for k, v := range inputServices.(map[string]int) {
-					s.srvcs[strings.Title(k)] = v;
+					s.srvcs[strings.Title(k)] = v
 				}
 			case []string:
 				for _, v := range inputServices.([]string) {
-					name := strings.Title(v);
+					name := strings.Title(v)
 					if s.srvcs[name], ok = mtr.srv[name].Misc["weight"].(int); !ok {
-						s.srvcs[name] = 10;
+						s.srvcs[name] = 10
 					}
 				}
 			}
@@ -241,22 +242,22 @@ func (mtr *Mtr) PickService(inputServices interface{}, source string, target str
 		for _, w := range s.srvcs {
 			s.sumw += w
 		}
-		tools.Cache.Set(source + target, s, -1)
+		tools.Cache.Set(source+target, s, -1)
 	} else {
 		s = ci.(*srvw)
 	}
 
 	if s.sumw == 0 {
-		log.Printf("No service supplied provides the requested language translation [%v-%v]", source, target);
+		log.Printf("No service supplied provides the requested language translation [%v-%v]", source, target)
 		return ""
 	}
 
 	r := rand.Intn(s.sumw)
 
 	for name, s := range s.srvcs {
-		r = r - s;
+		r = r - s
 		if r < 0 {
-			return name;
+			return name
 		}
 	}
 	return ""
@@ -273,14 +274,14 @@ func (mtr *Mtr) MakeServices() {
 		case string:
 			// only one service is provided
 			Name := strings.Title(svs)
-			mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep);
+			mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep)
 			mtr.services = []string{Name}
 		case []string:
 			// a list of services is provided
 			mtr.services = make([]string, len(svs))
 			for i, name := range svs {
 				Name := strings.Title(name)
-				mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep);
+				mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep)
 				mtr.services[i] = Name
 			}
 		// weights are described for each service
@@ -289,14 +290,14 @@ func (mtr *Mtr) MakeServices() {
 			c := 0
 			for name, weight := range svs {
 				Name := strings.Title(name)
-				mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep);
+				mtr.srv[Name] = tools.Call(mtr.factory, Name, mtr.options)[0].Interface().(*services.Ep)
 				mtr.srv[Name].Misc["weight"] = weight
 				mtr.services[c] = Name
 			}
 		}
 	} else {
 		for _, name := range mtr.services {
-			mtr.srv[name] = tools.Call(mtr.factory, strings.Title(name), mtr.options)[0].Interface().(*services.Ep);
+			mtr.srv[name] = tools.Call(mtr.factory, strings.Title(name), mtr.options)[0].Interface().(*services.Ep)
 		}
 	}
 	// Share the httpClient across the services, also with dns caching
@@ -312,7 +313,7 @@ func (mtr *Mtr) MakeServices() {
 				return (&net.Dialer{
 					Timeout:   tools.Seconds(30),
 					KeepAlive: tools.Seconds(300),
-				}).Dial("tcp", ip + address[separator:])
+				}).Dial("tcp", ip+address[separator:])
 			},
 		},
 	}
@@ -329,7 +330,7 @@ func (mtr *Mtr) MakeServices() {
 	panic("No active services were initialized")
 }
 
-func (mtr *Mtr) SupLangs() (interface{}) {
+func (mtr *Mtr) SupLangs() interface{} {
 	if l, err := tools.Keys(mtr.matrix); tools.Ck(err) {
 		return l
 	} else {
@@ -420,5 +421,3 @@ func New(options map[string]interface{}) *Mtr {
 	mtr.factory.Mtr = mtr
 	return &mtr
 }
-
-

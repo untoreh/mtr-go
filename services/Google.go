@@ -1,21 +1,22 @@
 package services
 
 import (
-	"regexp"
-	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
-	"github.com/levigross/grequests"
-	"github.com/untoreh/mtr-go/i"
-	"encoding/json"
 	"bytes"
-	"math"
-	"unicode/utf8"
-	"strconv"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"regexp"
+	"strconv"
+	"unicode/utf8"
+
+	"github.com/imdario/mergo"
+	"github.com/levigross/grequests"
+	"github.com/untoreh/mtr-go/i"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
-func (se *Ep) InitGoogle( map[string]interface{}) {
+func (se *Ep) InitGoogle(map[string]interface{}) {
 	se.Name = "google"
 
 	// setup cache keys
@@ -27,50 +28,50 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 	// misc, the misc map is unique for each service
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 30,
-		"glue" : ` ; ¶ ; `,
-		"splitGlue" : ` ?; ¶ ?; ?`,
-		"googleRegexes" : map[string]string{`,+` : `,`, `\[,` : `[`, },
+		"weight":        30,
+		"glue":          ` ; ¶ ; `,
+		"splitGlue":     ` ?; ¶ ?; ?`,
+		"googleRegexes": map[string]string{`,+`: `,`, `\[,`: `[`},
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"googleL" : "http://translate.google.com",
-		"google" : "http://translate.google.com/translate_a/single",
+		"googleL": "http://translate.google.com",
+		"google":  "http://translate.google.com/translate_a/single",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// default base request options for google
 	// the header map is unique for each service
 	headers := map[string]string{
-		"Host" : "translate.google.com",
-		"Accept" : "*/*",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "https://translate.google.com/",
-		"Connection" : "keep-alive",
+		"Host":            "translate.google.com",
+		"Accept":          "*/*",
+		"Accept-Language": "en-US,en;q=0.5",
+		"Accept-Encoding": "*",
+		"Referer":         "https://translate.google.com/",
+		"Connection":      "keep-alive",
 	}
 	query := map[string]string{
-		"client" : "t",
-		"hl" : "en",
-		"dt" : "t",
-		"ie" : "UTF-8", // Input encoding
-		"oe" : "UTF-8", // Output encoding
-		"multires" : "1",
-		"otf" : "0",
-		"pc" : "1",
-		"trs" : "1",
-		"ssel" : "0",
-		"tsel" : "0",
-		"kc" : "1",
+		"client":   "t",
+		"hl":       "en",
+		"dt":       "t",
+		"ie":       "UTF-8", // Input encoding
+		"oe":       "UTF-8", // Output encoding
+		"multires": "1",
+		"otf":      "0",
+		"pc":       "1",
+		"trs":      "1",
+		"ssel":     "0",
+		"tsel":     "0",
+		"kc":       "1",
 	}
 
 	// copy the default request
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
-		Headers: headers,
-		Params: query,
+		Headers:      headers,
+		Params:       query,
 		UseCookieJar: true,
 	}
 	mergo.Merge(&se.Req, tmpreq)
@@ -116,31 +117,31 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 					return [2]uint32{406398, (561666268 + 1526272306)}
 				},
 				RL: func(a uint32, b string, g gt) uint32 {
-					for c := 0; c < len(b) - 2; c += 3 {
-						d := uint32(b[c + 2])
+					for c := 0; c < len(b)-2; c += 3 {
+						d := uint32(b[c+2])
 						if d >= 'a' {
 							d = g.charCodeAt(string(d), 0) - 87
 						} else {
 							d64, _ := strconv.ParseUint(string(d), 10, 32)
 							d = uint32(d64)
 						}
-						if b[c + 1] == '+' {
+						if b[c+1] == '+' {
 							d = g.shr32(a, d)
 						} else {
 							d = a << d
 						}
 						if b[c] == '+' {
-							a = (a + d & 4294967295)
+							a = (a + d&4294967295)
 						} else {
 							a = a ^ d
 						}
 					}
-					return a;
+					return a
 				},
 				charCodeAt: func(str string, index int) uint32 {
 					char := t.MbSubstr(str, index, 1)
-					if (utf8.Valid([]byte(char))) {
-						result := uint32([]rune(char)[0]);
+					if utf8.Valid([]byte(char)) {
+						result := uint32([]rune(char)[0])
 						return result
 					}
 
@@ -154,13 +155,13 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 						return 0
 					}
 					bin := string(strconv.FormatUint(uint64(x), 2))
-					l := len(bin);
-					if (l > 32) {
-						bin = bin[l - 32:32]
-					} else if (l < 32) {
+					l := len(bin)
+					if l > 32 {
+						bin = bin[l-32 : 32]
+					} else if l < 32 {
 						bin = fmt.Sprintf("%032s", bin)
 					}
-					ret, err := strconv.ParseUint(fmt.Sprintf("%032s", bin[:32 - bits]), 2, 32)
+					ret, err := strconv.ParseUint(fmt.Sprintf("%032s", bin[:32-bits]), 2, 32)
 					if err != nil {
 						log.Print(err)
 					}
@@ -168,48 +169,48 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 				},
 			}
 			tkk := gtV.TKK()
-			b := tkk[0];
+			b := tkk[0]
 			d := []uint32{}
 			for e, f := 0, 0; f < utf8.RuneCountInString(a); f++ {
-				g := gtV.charCodeAt(a, f);
-				if (128 > g) {
+				g := gtV.charCodeAt(a, f)
+				if 128 > g {
 					d = append(d, 0)
-					copy(d[e + 1:], d[e:])
-					d[e] = g;
+					copy(d[e+1:], d[e:])
+					d[e] = g
 					e++
 				} else {
-					if (2048 > g) {
+					if 2048 > g {
 						d = append(d, 0)
-						copy(d[e + 1:], d[e:])
-						d[e] = g >> 6 | 192
+						copy(d[e+1:], d[e:])
+						d[e] = g>>6 | 192
 						e++
 					} else {
-						if 55296 == (g & 64512) && f + 1 < utf8.RuneCountInString(a) && 56320 == (gtV.charCodeAt(a, f + 1) & 64512) {
+						if 55296 == (g&64512) && f+1 < utf8.RuneCountInString(a) && 56320 == (gtV.charCodeAt(a, f+1)&64512) {
 							f++
 							g = 65536 + ((g & 1023) << 10) + (gtV.charCodeAt(a, f) & 1023)
 							d = append(d, 0)
-							copy(d[e + 1:], d[e:])
-							d[e] = g >> 18 | 240;
+							copy(d[e+1:], d[e:])
+							d[e] = g>>18 | 240
 							e++
 							d = append(d, 0)
-							copy(d[e + 1:], d[e:])
-							d[e] = g >> 12 & 63 | 128;
+							copy(d[e+1:], d[e:])
+							d[e] = g>>12&63 | 128
 							e++
 						} else {
 							d = append(d, 0)
-							copy(d[e + 1:], d[e:])
-							d[e] = g >> 12 | 224;
+							copy(d[e+1:], d[e:])
+							d[e] = g>>12 | 224
 							e++
 							d = append(d, 0)
-							copy(d[e + 1:], d[e:])
-							d[e] = g >> 6 & 63 | 128;
+							copy(d[e+1:], d[e:])
+							d[e] = g>>6&63 | 128
 							e++
 						}
 					}
 
 					d = append(d, 0)
-					copy(d[e + 1:], d[e:])
-					d[e] = g & 63 | 128;
+					copy(d[e+1:], d[e:])
+					d[e] = g&63 | 128
 					e++
 				}
 			}
@@ -223,12 +224,12 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 				c += d[e]
 				c = gtV.RL(c, "+-a^+6", gtV)
 			}
-			c = gtV.RL(c, "+-3^+b+-f", gtV);
-			c ^= tkk[1];
-			if (0 > c) {
-				c = (c & 2147483647) + 2147483648;
+			c = gtV.RL(c, "+-3^+b+-f", gtV)
+			c ^= tkk[1]
+			if 0 > c {
+				c = (c & 2147483647) + 2147483648
 			}
-			c = uint32(math.Mod(float64(c), math.Pow(10, 6)));
+			c = uint32(math.Mod(float64(c), math.Pow(10, 6)))
 			return fmt.Sprintf("%d.%d", c, (c ^ b))
 		},
 	}
@@ -269,7 +270,7 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -282,16 +283,16 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 		}
 		newreq = req
 		newreq.Data = map[string]string{
-				"q" : data,
-			}
+			"q": data,
+		}
 		newreq.Params = params
 		newreq.Params["tk"] = gooV.generateToken(data)
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (qinput t.SMII, order t.MISI) {
 		// cookies
-		se.GenC("googleL");
-		qinput, order = se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		se.GenC("googleL")
+		qinput, order = se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return
 	}
 	se.GetLangs = func() map[string]string {
@@ -313,4 +314,3 @@ func (se *Ep) InitGoogle( map[string]interface{}) {
 	}
 
 }
-

@@ -7,18 +7,20 @@ import (
 )
 
 type TextReq struct {
-	RgxMain string
+	RgxMain *regexp.Regexp
 }
+
 // struct needs points to be assigned directly (with [k] = v instead of {k:v}
 type I interface{}
 type SI []I
 type MII map[I]I
 type SMII []MII
 type MISI map[I][]I
+
 // NOTE: this algo does not always return the same values because it ranges over a map, which means
 // that depending on strings lenghts mapped, the linear chars + strl check differs depending on which string
 // is being iterated. Any more complex non linear normalization that would return a consistent value
-// is not really worth the effort since requests are split and unordered anyway. Anyway the fact
+// is not really worth the effort since requests are split and unordered anyway. The fact
 // that it returns different values means that requests for the same map of strings can vary up to
 // n * sumof(input[k])
 func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
@@ -38,10 +40,10 @@ func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
 			initSI(&arr_input, p)
 			order[p] = append(order[p], key)
 			// SplitP accepts a pointer
-			arr_input[p][key] = txtrq.SplitP(input[key], &txtrq.RgxMain)
+			arr_input[p][key] = txtrq.SplitP(input[key])
 			p++
 			//runtime.Breakpoint()
-		} else if chars + strl > 1024 {
+		} else if chars+strl > 1024 {
 			initSI(&arr_input, p)
 			for _, kp := range parts {
 				order[p] = append(order[p], kp)
@@ -81,7 +83,7 @@ func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
 func initSI(arr_input *SMII, p int) {
 	// insert MII{} into arr_input at index p
 	*arr_input = append(*arr_input, MII{})
-	copy((*arr_input)[p + 1:], (*arr_input)[p:])
+	copy((*arr_input)[p+1:], (*arr_input)[p:])
 	(*arr_input)[p] = MII{}
 }
 
@@ -89,7 +91,7 @@ func (txtrq *TextReq) multiRegex(root string, tails []string) string {
 	frags := []string{}
 
 	for _, r := range tails {
-		frags = append(frags, root + r)
+		frags = append(frags, root+r)
 	}
 
 	return "(?m:" + strings.Join(frags, "|") + ")"
@@ -110,12 +112,11 @@ func (txtrq *TextReq) initRegex() {
 	//	"\\n",
 	//	"",
 	//})
-	txtrq.RgxMain = `(?m:[\S\s]{1,1000}([\.\;\:\,\!\?]|\z)[\s]?)`
+	txtrq.RgxMain = regexp.MustCompile(`(?m:[\S\s]{1,1000}([.;:,!?]|\z)[\s]?)`)
 }
 
-func (txtrq *TextReq) SplitP(str *string, reg *string) []string {
-	re := regexp.MustCompile(*reg)
-	matches_a := re.FindAllStringSubmatch(*str, -1)
+func (txtrq *TextReq) SplitP(str *string) []string {
+	matches_a := txtrq.RgxMain.FindAllStringSubmatch(*str, -1)
 	matches_s := make([]string, len(matches_a))
 	for k, v := range matches_a {
 		matches_s[k] = strings.Join(v, "")

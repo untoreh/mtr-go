@@ -2,11 +2,12 @@ package services
 
 import (
 	"regexp"
+	"strings"
+
 	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"strings"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitPromt(map[string]interface{}) {
@@ -21,45 +22,45 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 10,
+		"weight": 10,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"promtL" : "http://www.online-translator.com/",
-		"promt" : "http://www.online-translator.com/services/TranslationService.asmx/GetTranslateNew",
+		"promtL": "http://www.online-translator.com/",
+		"promt":  "http://www.online-translator.com/services/TranslationService.asmx/GetTranslateNew",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// params
 	// default base request options for promt
 	headers := map[string]string{
-		"Host" : "www.online-translator.com",
-		"Accept" : "application/json, text/javascript, */*; q=0.01",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "http://www.online-translator.com/",
-		"Content-Type" : "application/json; charset=utf-8",
-		"X-Requested-With" : "XMLHttpRequest",
-		"Connection" : "keep-alive",
+		"Host":             "www.online-translator.com",
+		"Accept":           "application/json, text/javascript, */*; q=0.01",
+		"Accept-Language":  "en-US,en;q=0.5",
+		"Accept-Encoding":  "*",
+		"Referer":          "http://www.online-translator.com/",
+		"Content-Type":     "application/json; charset=utf-8",
+		"X-Requested-With": "XMLHttpRequest",
+		"Connection":       "keep-alive",
 	}
 
 	json := map[string]string{
-		"template" : "auto",
-		"lang" : "en",
-		"limit" : "3000",
-		"useAutoDetect" : "true",
-		"key" : "",
-		"ts" : "MainSite",
-		"tid" : "",
-		"IsMobile" : "false",
+		"template":      "auto",
+		"lang":          "en",
+		"limit":         "3000",
+		"useAutoDetect": "true",
+		"key":           "",
+		"ts":            "MainSite",
+		"tid":           "",
+		"IsMobile":      "false",
 	}
 
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
 		Headers: headers,
-		JSON: json,
+		JSON:    json,
 	}
 	mergo.Merge(&se.Req, tmpreq)
 
@@ -72,9 +73,9 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 
 	type respJson struct {
 		D struct {
-			  Result string
-			  IsWord bool
-		  }
+			Result string
+			IsWord bool
+		}
 	}
 
 	respRxp := regexp.MustCompile(`ref_result">(.*?)<`)
@@ -112,7 +113,7 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -131,8 +132,8 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
-		se.GenC("promtL");
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		se.GenC("promtL")
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

@@ -1,24 +1,24 @@
 package tools
 
 import (
-	"regexp"
-	"reflect"
-	"errors"
 	"bytes"
-	"sort"
-	"io"
-	"unicode"
-	"fmt"
-	"log"
-	"strings"
 	"compress/gzip"
-	"net/url"
-	"time"
+	"errors"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
+	"reflect"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+	"unicode"
 )
 
 // Ck checks if value is empty
-func Ck(set interface{}) (bool) {
+func Ck(set interface{}) bool {
 	switch set {
 	case nil, "", 0, false:
 		return true
@@ -26,6 +26,7 @@ func Ck(set interface{}) (bool) {
 		return false
 	}
 }
+
 // Must returns the value of a value, error function
 func Must(i interface{}, err error) interface{} {
 	if err != nil {
@@ -45,13 +46,14 @@ func ArrayKeys(mmap map[interface{}]interface{}) (keys []interface{}) {
 	}
 	return
 }
+
 // RegSplit
 // http://stackoverflow.com/a/14765076/2229761
 func RegSplit(text string, delimeter string, keep bool) []string {
 	reg := regexp.MustCompile(delimeter)
 	indexes := reg.FindAllStringIndex(text, -1)
 	laststart := 0
-	result := make([]string, len(indexes) + 1)
+	result := make([]string, len(indexes)+1)
 	if keep {
 		for i, element := range indexes {
 			result[i] = text[laststart:element[1]]
@@ -67,14 +69,14 @@ func RegSplit(text string, delimeter string, keep bool) []string {
 	if len(text[laststart:]) != 0 {
 		result[len(indexes)] = text[laststart:]
 	} else {
-		result = result[:len(result) - 1]
+		result = result[:len(result)-1]
 	}
 
 	return result
 }
 
 // MapString joins the elements of a map in string
-func MapString(m MII, glue string, order SI) (string) {
+func MapString(m MII, glue string, order SI) string {
 	var s bytes.Buffer
 	var keys SI
 	if !Ck(order) {
@@ -94,8 +96,8 @@ func MapString(m MII, glue string, order SI) (string) {
 }
 
 // Call calls the function of obj by name
-func Call(obj interface{}, name string, args ... interface{}) ([]reflect.Value) {
-	if (reflect.TypeOf(args[0]) != nil) {
+func Call(obj interface{}, name string, args ...interface{}) []reflect.Value {
+	if reflect.TypeOf(args[0]) != nil {
 		inputs := make([]reflect.Value, len(args))
 		for i := range args {
 			inputs[i] = reflect.ValueOf(args[i])
@@ -179,7 +181,7 @@ func GzipString(s string) string {
 }
 
 // ParseUrls returns a map of parsed url provided a map of string urls
-func ParseUrls(urls map[string]string) (map[string]*url.URL) {
+func ParseUrls(urls map[string]string) map[string]*url.URL {
 	var e error
 	murls := map[string]*url.URL{}
 	for t, u := range urls {
@@ -193,7 +195,7 @@ func ParseUrls(urls map[string]string) (map[string]*url.URL) {
 // Reverse reverts the order of a string using runes (mb safe)
 func Reverse(s string) string {
 	runes := []rune(s)
-	for i, j := 0, len(runes) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
 	}
 	return string(runes)

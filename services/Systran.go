@@ -1,12 +1,13 @@
 package services
 
 import (
-	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
-	"github.com/levigross/grequests"
-	"github.com/untoreh/mtr-go/i"
 	"log"
 	"regexp"
+
+	"github.com/imdario/mergo"
+	"github.com/levigross/grequests"
+	"github.com/untoreh/mtr-go/i"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitSystran(options map[string]interface{}) {
@@ -21,15 +22,15 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 	// misc
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 10,
+		"weight": 10,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"systranL" : "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/supportedLanguages",
-		"systran" : "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/text/translate",
-		"systranK" : "https://platform.systran.net/demos-docs/translation/translation/translate.js",
+		"systranL": "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/supportedLanguages",
+		"systran":  "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/text/translate",
+		"systranK": "https://platform.systran.net/demos-docs/translation/translation/translate.js",
 	})
 	// api key check
 	if options["systran_key"] == nil {
@@ -45,22 +46,22 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 	var headers map[string]string
 	if options["systran_key"] == nil {
 		headers = map[string]string{
-			"Host": "api-platform.systran.net",
+			"Host":            "api-platform.systran.net",
 			"Accept-Language": "en-US,en;q=0.5",
-			"Referer": "https://platform.systran.net/demos-docs/translation/translation/translate.html",
-			"Origin": "https://platform.systran.net",
-			"Connection": "keep-alive",
+			"Referer":         "https://platform.systran.net/demos-docs/translation/translation/translate.html",
+			"Origin":          "https://platform.systran.net",
+			"Connection":      "keep-alive",
 		}
 	} else {
 		headers = map[string]string{
-			"X-Mashape-Key" : options["systran_key"].(string),
-			"Accept" : "application/json",
+			"X-Mashape-Key": options["systran_key"].(string),
+			"Accept":        "application/json",
 		}
 	}
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
 		Headers: headers,
-		Params: map[string]string{},
+		Params:  map[string]string{},
 	}
 	mergo.Merge(&se.Req, tmpreq)
 
@@ -112,7 +113,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -129,7 +130,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {
@@ -145,9 +146,9 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		}
 		params["target"] = "en"
 		jso := se.RetReqs(&mjso{}, "json", "GET", "systranL", map[int]*grequests.RequestOptions{
-			0 : {
+			0: {
 				Headers: se.Req.Headers,
-				Params: params,
+				Params:  params,
 			},
 		}).([]interface{})[0].(*mjso)
 

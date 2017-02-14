@@ -3,6 +3,7 @@ Multi language translator api wrapper in Go, translate or compare strings or arr
 
 [![Build Status](https://travis-ci.org/untoreh/mtr.svg?branch=master)](https://travis-ci.org/untoreh/mtr)
 [![CodeFactor](https://www.codefactor.io/repository/github/untoreh/mtr-go/badge)](https://www.codefactor.io/repository/github/untoreh/mtr-go)
+[![Code Climate](https://codeclimate.com/github/untoreh/mtr-go/badges/gpa.svg)](https://codeclimate.com/github/untoreh/mtr-go)
 
 ## Install 
 Download the bin from the release page.

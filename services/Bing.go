@@ -1,12 +1,13 @@
 package services
 
 import (
+	"encoding/json"
 	"regexp"
+
 	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"encoding/json"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitBing(map[string]interface{}) {
@@ -21,33 +22,33 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	// misc, the misc map is unique for each service
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 30,
-		"glue" : `; ¶; `,
-		"splitGlue" : `;\s?¶;\s?`,
+		"weight":    30,
+		"glue":      `; ¶; `,
+		"splitGlue": `;\s?¶;\s?`,
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"bingL" : "http://www.bing.com/translator/",
-		"bing" : "http://www.bing.com/translator/api/Translate/TranslateArray",
+		"bingL": "http://www.bing.com/translator/",
+		"bing":  "http://www.bing.com/translator/api/Translate/TranslateArray",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// default base request options for bing
 	// the header map is unique for each service
 	headers := map[string]string{
-		"Host" : "www.bing.com",
-		"Accept" : "application/json, text/javascript, */*; q=0.01",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "https://www.bing.com/translator/",
-		"Content-Type" : "application/json; charset=utf-8",
-		"X-Requested-With" : "XMLHttpRequest",
+		"Host":             "www.bing.com",
+		"Accept":           "application/json, text/javascript, */*; q=0.01",
+		"Accept-Language":  "en-US,en;q=0.5",
+		"Accept-Encoding":  "*",
+		"Referer":          "https://www.bing.com/translator/",
+		"Content-Type":     "application/json; charset=utf-8",
+		"X-Requested-With": "XMLHttpRequest",
 	}
 	// copy the default request
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
-		Headers: headers,
+		Headers:      headers,
 		UseCookieJar: true,
 	}
 	mergo.Merge(&se.Req, tmpreq)
@@ -76,7 +77,7 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		} else {
 			return nil
 		}
-		if (source == "auto") {
+		if source == "auto" {
 			source = "-"
 		}
 
@@ -99,20 +100,20 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
 	se.GenReq = func(items map[string]interface{}) (newreq grequests.RequestOptions) {
 		data := *(items["data"].(*string))
 		newreq = *(items["req"].(*grequests.RequestOptions))
-		newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text" : data}, })
+		newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text": data}})
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
-		se.GenC("bingL");
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		se.GenC("bingL")
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {
@@ -133,5 +134,3 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		return langs
 	}
 }
-
-

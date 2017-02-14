@@ -1,13 +1,14 @@
 package services
 
 import (
+	"log"
 	"regexp"
+	"strings"
+
 	"github.com/imdario/mergo"
-	t "github.com/untoreh/mtr-go/tools"
 	"github.com/levigross/grequests"
 	"github.com/untoreh/mtr-go/i"
-	"strings"
-	"log"
+	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitYandex(map[string]interface{}) {
@@ -22,7 +23,7 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 	// misc, the misc map is unique for each service
 	tmpmisc := se.Misc
 	se.Misc = map[string]interface{}{
-		"weight" : 30,
+		"weight": 30,
 	}
 	// we only set it if it is present in cache, otherwise the check for it before the requests
 	// does not work if we set an empty value, we could check the value from the cache
@@ -34,33 +35,33 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 
 	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"yandexL" : "https://translate.yandex.net/api/v1/tr.json/getLangs",
-		"yandex1" : "https://translate.yandex.com",
-		"yandex2" : "https://translate.yandex.net/api/v1/tr.json/translate",
+		"yandexL": "https://translate.yandex.net/api/v1/tr.json/getLangs",
+		"yandex1": "https://translate.yandex.com",
+		"yandex2": "https://translate.yandex.net/api/v1/tr.json/translate",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
 	// default base request options for yandex
 	// the header map is unique for each service
 	headers := map[string]string{
-		"Host" : "translate.yandex.net",
-		"Accept" : "*/*",
-		"Accept-Language" : "en-US,en;q=0.5",
-		"Accept-Encoding" : "*",
-		"Referer" : "https=>//translate.yandex.com/",
-		"Content-Type" : "application/x-www-form-urlencoded",
-		"Origin" : "https=>//translate.yandex.com",
-		"Connection" : "keep-alive",
+		"Host":            "translate.yandex.net",
+		"Accept":          "*/*",
+		"Accept-Language": "en-US,en;q=0.5",
+		"Accept-Encoding": "*",
+		"Referer":         "https=>//translate.yandex.com/",
+		"Content-Type":    "application/x-www-form-urlencoded",
+		"Origin":          "https=>//translate.yandex.com",
+		"Connection":      "keep-alive",
 	}
 	query := map[string]string{
-		"srv" : "tr-text",
-		"reason" : "paste",
+		"srv":    "tr-text",
+		"reason": "paste",
 	}
 	// copy the default request
 	tmpreq := se.Req
 	se.Req = grequests.RequestOptions{
 		Headers: headers,
-		Params: query,
+		Params:  query,
 	}
 	mergo.Merge(&se.Req, tmpreq)
 
@@ -105,7 +106,7 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
-		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string));
+		translated := se.JoinTranslated(str_ar, qinput, translation, se.Misc["splitGlue"].(string))
 
 		return translated
 	}
@@ -115,8 +116,8 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		newreq = req
 		// it is important to use a literal map to avoid overwrites during requests
 		newreq.Data = map[string]string{
-			"text" : data,
-			"options" : "4",
+			"text":    data,
+			"options": "4",
 		}
 		return
 	}
@@ -125,8 +126,7 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		if _, ok := se.Misc["yandexId"]; !ok {
 			matches1 := regexp.MustCompile(`SID: '.*`).
 				FindAllStringSubmatch(
-				se.RetReqs(nil, "string", "GET", "yandex1", nil).
-				([]string)[0], -1)
+					se.RetReqs(nil, "string", "GET", "yandex1", nil).([]string)[0], -1)
 			sid := regexp.MustCompile(`SID: '(.*)'`).
 				FindAllStringSubmatch(matches1[0][0], -1)[0]
 			sidSp := strings.Split(sid[1], ".")
@@ -141,14 +141,14 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 				log.Print("Yandex preparation failed")
 			}
 		}
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string));
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {
 		// langs req
 		lReq := &grequests.RequestOptions{
 			Params: map[string]string{
-				"ui" : "en",
+				"ui": "en",
 			},
 		}
 		mergo.Merge(lReq, se.Req)
@@ -158,7 +158,7 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 			Langs map[string]string
 		}
 		jlv := se.RetReqs(&jl{}, "json", "GET", "yandexL", map[int]*grequests.RequestOptions{
-			0 : lReq }).([]interface{})[0].(*jl)
+			0: lReq}).([]interface{})[0].(*jl)
 		if jlv == nil {
 			log.Print("Failed to retrieve yandex langs")
 			return nil
@@ -176,4 +176,3 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		return langs
 	}
 }
-

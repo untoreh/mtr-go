@@ -1497,8 +1497,8 @@ var Langs = map[string]map[string]string{
 		"frengly": "zhCN",
 		"promt":   "zhcn",
 		"systran": "zh-Hans",
-		"sdl":        "chi",
-		"treu": "zh",
+		"sdl":     "chi",
+		"treu":    "zh",
 	},
 	"zh-TW": map[string]string{
 		"name":    "chinese traditional",
@@ -1609,7 +1609,7 @@ type LanguageCode struct {
 func (lc *LanguageCode) Convert(value string) string {
 	// Search $value
 	index := ""
-	search:
+search:
 	for key, langs := range *lc.Langs {
 		for _, lang := range langs {
 			if value == lang {
@@ -1635,4 +1635,3 @@ func (lc *LanguageCode) Convert(value string) string {
 }
 
 var Lc = &LanguageCode{&Langs}
-

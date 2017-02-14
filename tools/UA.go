@@ -1,20 +1,22 @@
 package tools
 
 import (
-	"io/ioutil"
-	"github.com/levigross/grequests"
-	"log"
 	"encoding/csv"
-	"os"
+	"io/ioutil"
+	"log"
 	"math/rand"
+	"os"
+
+	"github.com/levigross/grequests"
 )
 
 type UA struct {
-	domain string
-	remote string
-	gh     string
-	local  string
-	agents []string
+	domain  string
+	remote  string
+	gh      string
+	local   string
+	agents  []string
+	agentsL int
 }
 
 //func (ua *UA) downloadStrings() ([]byte) {
@@ -47,7 +49,7 @@ type UA struct {
 func (ua *UA) downloadFromGithub() {
 	var resp *grequests.Response
 	var err error
-	get:
+get:
 	for ret := 0; ret < 3; ret++ {
 		resp, err = grequests.Get(ua.gh, nil)
 		if err == nil {
@@ -62,8 +64,7 @@ func (ua *UA) downloadFromGithub() {
 }
 
 func (ua *UA) Get() string {
-	n := rand.Int() % len(ua.agents)
-	return ua.agents[n]
+	return ua.agents[rand.Int()%ua.agentsL]
 }
 
 func (ua *UA) parseStrings() []string {
@@ -95,5 +96,6 @@ func (ua *UA) New() *UA {
 		ua.downloadFromGithub()
 	}
 	ua.agents = ua.parseStrings()
+	ua.agentsL = len(ua.agents)
 	return ua
 }
