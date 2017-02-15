@@ -1,25 +1,22 @@
 language: go
-
 go:
 - 1.7.x
 before_install:
-# glide problems
 - export OS= ARCH=
 - mkdir -p $GOPATH/bin $GOPATH/src
 install:
 - curl https://glide.sh/get | sh
 - glide install
 script:
-- go build bin/main.go
-- ls bin/
-#before_deploy:
-#-
-#deploy:
-#  provider: releases
-#  api_key:
-#    secure:
-#  file:
-#  -
-#  skip_cleanup: true
-#  on:
-#tags: true
+- go build -o mtr bin/main.go
+- go test -coverprofile=coverage.txt
+before_deploy:
+- chmod +x mtr
+- tar -zcf mtr-${TRAVIS_TAG}.tar.gz mtr
+deploy:
+  provider: releases
+  api_key:
+    secure: WZuy8ii6I9Lok8Bh/+ATLjWiGMAjL4kBqtOIRCWP2JHC83XC8ZPd3IpLYV0ZBOc6Zvcgva/EkPj5t60Pjot01fWHGva1qUppE8gSi8lXpUkljZKvQjgIZAcYNcvYuQ9tp1kxz1EpwwNXjzNINB/Szd5KzECAx9gVeKzXAv5c/dytge17lSh3vXJxlPBYCy+6gpdaCKAaEel2NdBlSwZPL/iZra+whBSKXubGtZVdbb1hMHYrzzj3/E+IUFoR2ghrFa487Fzp6AU/gfR30f/VhXwDfQzbGDkL8kyQTaS9cXxOP7pB7Z3sKL1QeeIwYj5YZ9pDfkdbvvAPhxtB6YnA29F4f21rKvR5HJCDTQ8KW4TPPDm6EdS8ALPJKQgmVIcjdbcCykker9zsKRU2x3FvjREGrSf6/LNUcyDLz2VOtdvlCd8rTShiXjpVK0QIKtwc+TMHwdegljOV8bnMQBdRrTf2DmdxH+oDOSvTTtGe0fQO/DhOjyto7jroGJXAj6zXoqjNCSGqbNVMUQYK0SiU4eLizp0XedujAguPpfJhFwoKQgNiKCcFUWmjlhASXYCWJgHSRzfm5qNxoiPVWWhTWlvBejGbelJMrrWdDKjiFfqmoIKdnCC4RYOEQ0Eu5AjPfCNHjEulPwAQF7P8E3BrhvrKu2H1hvFS8+Qq5Q9kitA=
+  file: mtr-${TRAVIS_TAG}.tar.gz
+  on:
+    repo: untoreh/mtr-go
