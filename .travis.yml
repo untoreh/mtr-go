@@ -3,21 +3,23 @@ language: go
 go:
 - 1.7.x
 before_install:
-- export GOPATH=$PWD/vendor PATH=$GOPATH/bin:$PATH
+- export GOPATH=$PWD PATH=$GOPATH/bin:$PATH
 install:
+- echo $PWD
 - mkdir -p $GOPATH/bin $GOPATH/src
 - curl https://glide.sh/get | sh
 - glide install
 script:
--
-before_deploy:
--
-deploy:
-  provider: releases
-  api_key:
-    secure:
-  file:
-  -
-  skip_cleanup: true
-  on:
-tags: true
+- echo 0
+
+#before_deploy:
+#-
+#deploy:
+#  provider: releases
+#  api_key:
+#    secure:
+#  file:
+#  -
+#  skip_cleanup: true
+#  on:
+#tags: true
