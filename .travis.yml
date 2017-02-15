@@ -20,3 +20,4 @@ deploy:
   file: mtr-${TRAVIS_TAG}.tar.gz
   on:
     repo: untoreh/mtr-go
+    tags: true
