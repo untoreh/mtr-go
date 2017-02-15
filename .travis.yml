@@ -5,7 +5,7 @@ go:
 before_install:
 # glide problems
 - export OS= ARCH=
-- mkdir $GOPATH/bin $GOPATH/src
+- mkdir -p $GOPATH/bin $GOPATH/src
 install:
 - curl https://glide.sh/get | sh
 - glide install
