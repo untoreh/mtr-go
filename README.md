@@ -1,7 +1,7 @@
 # Mtr-go
 Multi language translator api wrapper in Go, translate or compare strings or arrays of strings with language pairs supported by multiple services.
 
-[![Build Status](https://travis-ci.org/untoreh/mtr.svg?branch=master)](https://travis-ci.org/untoreh/mtr)
+[![Build Status](https://travis-ci.org/untoreh/mtr-go.svg?branch=master)](https://travis-ci.org/untoreh/mtr-go)
 [![CodeFactor](https://www.codefactor.io/repository/github/untoreh/mtr-go/badge)](https://www.codefactor.io/repository/github/untoreh/mtr-go)
 [![Code Climate](https://codeclimate.com/github/untoreh/mtr-go/badges/gpa.svg)](https://codeclimate.com/github/untoreh/mtr-go)
 
