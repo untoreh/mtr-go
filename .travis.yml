@@ -3,7 +3,7 @@ language: go
 go:
 - 1.7.x
 before_install:
-- apt install curl
+- apt-get install curl
 - export GOPATH=$PWD PATH=$GOPATH/bin:$PATH
 install:
 - echo $PWD
