@@ -3,11 +3,8 @@ language: go
 go:
 - 1.7.x
 before_install:
-- apt-get install curl
-- export GOPATH=$PWD PATH=$GOPATH/bin:$PATH
+- export OS= ARCH=
 install:
-- echo $PWD
-- mkdir -p $GOPATH/bin $GOPATH/src
 - curl https://glide.sh/get | sh
 - glide install
 script:
