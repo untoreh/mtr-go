@@ -10,7 +10,7 @@ install:
 - curl https://glide.sh/get | sh
 - glide install
 script:
-- echo 0
+- go build bin/main.go
 
 #before_deploy:
 #-
