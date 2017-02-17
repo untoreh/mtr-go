@@ -8,7 +8,7 @@ install:
 - glide install
 script:
 - go build -o mtr bin/main.go
-- go test -coverprofile=coverage.txt
+- go test ./... -coverprofile=coverage.txt
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 before_deploy:
