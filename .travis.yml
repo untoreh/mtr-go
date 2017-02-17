@@ -1,11 +1,10 @@
 language: go
 go:
-- 1.8.x
+- 1.8
 before_install:
-- export OS= ARCH=
 - mkdir -p $GOPATH/bin $GOPATH/src
 install:
-- curl https://glide.sh/get | sh
+- OS= ARCH= curl https://glide.sh/get | sh
 - glide install
 script:
 - go build -o mtr bin/main.go
