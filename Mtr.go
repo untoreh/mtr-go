@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/untoreh/mergo"
+	"github.com/imdario/mergo"
 	"github.com/untoreh/mtr-go/factory"
 	"github.com/untoreh/mtr-go/i"
 	"github.com/untoreh/mtr-go/services"
@@ -169,6 +169,7 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 func (mtr *Mtr) LangMatrix() {
 	if fetch, found := tools.Cache.Get("mtr_matrix"); !found {
 		for name, obj := range mtr.srv {
+			log.Printf("matrix for service: %s", name)
 			if obj.Active == true {
 				for _, l := range obj.GetLangs() {
 					if _, ok := mtr.matrix[mtr.Lc.Convert(l)]; !ok {
@@ -344,6 +345,8 @@ type MtrGet struct {
 
 func (mtr *MtrGet) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	defer r.Body.Close()
+
 	tran := mtr.Tr(q.Get("sl"), q.Get("tl"), q.Get("q"), q.Get("sv"))
 	tools.Headers(&w)
 	if err := json.NewEncoder(w).Encode(tran); err != nil {
@@ -357,13 +360,16 @@ type MtrPost struct {
 
 func (mtr *MtrPost) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	defer r.Body.Close()
+
 	decoder := json.NewDecoder(r.Body)
 	var data map[string]string
 	err := decoder.Decode(&data)
 	if err != nil {
+		log.Print("couldn't decode POST request")
 		log.Print(err)
+		return
 	}
-	defer r.Body.Close()
 
 	tran := mtr.Tr(q.Get("sl"), q.Get("tl"), data, q.Get("sv"))
 	tools.Headers(&w)
@@ -382,6 +388,7 @@ func (mtr *MtrPostMulti) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//buf := tools.ConvertUtf8(r.Body)
 	//decoder := json.NewDecoder(buf)
 	q := r.URL.Query()
+	defer r.Body.Close()
 
 	decoder := json.NewDecoder(r.Body)
 	var data map[string]interface{}
@@ -391,7 +398,6 @@ func (mtr *MtrPostMulti) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(err.Error())
 		return
 	}
-	defer r.Body.Close()
 
 	ln := len(data["mtl"].([]interface{}))
 	tran := map[string]interface{}{}
@@ -410,6 +416,7 @@ func (mtr *MtrPostMulti) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tools.Headers(&w)
 	if err := json.NewEncoder(w).Encode(tran); err != nil {
 		log.Print(err)
+		return
 	}
 }
 

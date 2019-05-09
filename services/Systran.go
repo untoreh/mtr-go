@@ -4,14 +4,16 @@ import (
 	"log"
 	"regexp"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitSystran(options map[string]interface{}) {
 	se.Name = "systran"
+	se.Limit = 1000
+	se.Txtrq.SetRegex(&se.Name, se.Limit)
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -28,8 +30,8 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"systranL": "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/supportedLanguages",
-		"systran":  "https://systran-systran-platform-for-language-processing-v1.p.mashape.com/translation/text/translate",
+		"systranL": "https://api-platform.systran.net/translation/supportedLanguages",
+		"systran":  "https://api-platform.systran.net/translation/text/translate",
 		"systranK": "https://platform.systran.net/demos-docs/translation/translation/translate.js",
 	})
 	// api key check
@@ -54,8 +56,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		}
 	} else {
 		headers = map[string]string{
-			"X-Mashape-Key": options["systran_key"].(string),
-			"Accept":        "application/json",
+			"Accept": "application/json",
 		}
 	}
 	tmpreq := se.Req
@@ -130,7 +131,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string), se.Limit, &se.Name)
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

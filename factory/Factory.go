@@ -26,12 +26,6 @@ func (f *Factory) Yandex(options map[string]interface{}) *services.Ep {
 	return &Yandex
 }
 
-func (f *Factory) Convey(options map[string]interface{}) *services.Ep {
-	Convey := services.Ep(*services.GEp)
-	Convey.InitConvey(options)
-	return &Convey
-}
-
 func (f *Factory) Frengly(options map[string]interface{}) *services.Ep {
 	Frengly := services.Ep(*services.GEp)
 	Frengly.InitFrengly(options)
@@ -50,20 +44,22 @@ func (f *Factory) Promt(options map[string]interface{}) *services.Ep {
 	return &Promt
 }
 
-func (f *Factory) Sdl(options map[string]interface{}) *services.Ep {
-	Sdl := services.Ep(*services.GEp)
-	Sdl.InitSdl(options)
-	return &Sdl
-}
-
-func (f *Factory) Treu(options map[string]interface{}) *services.Ep {
-	Treu := services.Ep(*services.GEp)
-	Treu.InitTreu(options)
-	return &Treu
-}
-
 func (f *Factory) Systran(options map[string]interface{}) *services.Ep {
 	Systran := services.Ep(*services.GEp)
 	Systran.InitSystran(options)
 	return &Systran
 }
+
+// ---
+
+// func (f *Factory) Sdl(options map[string]interface{}) *services.Ep {
+// 	Sdl := services.Ep(*services.GEp)
+// 	Sdl.InitSdl(options)
+// 	return &Sdl
+// }
+
+// func (f *Factory) Convey(options map[string]interface{}) *services.Ep {
+// 	Convey := services.Ep(*services.GEp)
+// 	Convey.InitConvey(options)
+// 	return &Convey
+// }

@@ -48,7 +48,8 @@ func TestTextReq_Pt(t *testing.T) {
 	}
 
 	txtrq := NewTextReq()
-	arr_input, order := txtrq.Pt(data, ";:;")
+	srv := "main"
+	arr_input, order := txtrq.Pt(data, ";:;", 1000, &srv)
 
 	for i := range arr_input {
 		if arr_input[i] == nil {

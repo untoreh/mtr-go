@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/untoreh/mtr-go"
+	mtr_go "github.com/untoreh/mtr-go"
 )
 
 func main() {
@@ -15,22 +15,21 @@ func main() {
 	log.Print("loading services...")
 	m := mtr_go.New(map[string]interface{}{
 		"services": []string{
-			"google",
 			"bing",
+			"google",
 			"yandex",
-			"convey",
 			"frengly",
 			"multillect",
 			"promt",
-			"sdl",
 			"systran",
-			"treu",
+			// "convey",
+			// "sdl",
 		},
 	})
 
 	// Routes consist of a path and a handler function.
 	r := mux.NewRouter()
-	r.Handle("/", handlers.CompressHandler(&mtr_go.MtrGet{m}))
+	r.Handle("/", handlers.CompressHandler(&mtr_go.MtrGet{m})).Methods("GET")
 	r.Handle("/", handlers.CompressHandler(&mtr_go.MtrPost{m})).Methods("POST")
 	r.Handle("/multi", handlers.CompressHandler(&mtr_go.MtrPostMulti{m})).Methods("POST")
 

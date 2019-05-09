@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
@@ -21,6 +21,7 @@ import (
 type Ep struct {
 	i.Ep
 	Name      string
+	Limit     int
 	Misc      map[string]interface{}
 	Urls      map[string]*url.URL
 	UrlStr    map[string]string
@@ -273,7 +274,7 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOptions, k int, c chan kr) {
 	for ret := 0; ret < 5; ret++ {
 		if resp, err := grequests.Req(verb, ep.UrlStr[urlstr], reqo); t.Ck(err) && resp.StatusCode == 200 {
-			// convert ot json struct
+			// convert to json struct
 			c <- kr{k, resp}
 			return
 		} else {

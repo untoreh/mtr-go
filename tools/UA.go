@@ -70,6 +70,7 @@ func (ua *UA) Get() string {
 func (ua *UA) parseStrings() []string {
 	f, _ := os.Open(ua.local)
 	r := csv.NewReader(f)
+	r.LazyQuotes = true
 	lines, err := r.ReadAll()
 	if err != nil {
 		log.Print(err)
@@ -86,7 +87,8 @@ func (ua *UA) New() *UA {
 
 	ua.domain = "http://ua.theafh.net/"
 	ua.remote = "http://ua.theafh.net/list.php?s=windows+chrome&include=yes&class=all&do=desc&download=true"
-	ua.gh = "https://cdn.rawgit.com/untoreh/mtr-go/master/UAstrings.csv"
+	ua.gh = "https://cdn.jsdelivr.net/gh/untoreh/mtr-go/UAstrings.csv"
+
 	ua.local = "UAstrings.csv"
 
 	if _, err = ioutil.ReadFile(ua.local); err != nil {

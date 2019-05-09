@@ -156,6 +156,7 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "ben",
 		"iso639-2/b": "ben",
 		"iso639-3":   "ben",
+		"bing":       "bn-BD",
 	},
 	"bh": map[string]string{
 		"name":       "bihari",
@@ -1619,7 +1620,7 @@ search:
 		}
 	}
 
-	if index == "" {
+	if index == "" && value != "emj" { // don't care about emojis...
 		log.Print("Language code " + value + " not found.")
 	}
 

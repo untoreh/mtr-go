@@ -10,14 +10,16 @@ import (
 	"strconv"
 	"unicode/utf8"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitGoogle(map[string]interface{}) {
 	se.Name = "google"
+	se.Limit = 1000
+	se.Txtrq.SetRegex(&se.Name, se.Limit)
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -30,15 +32,15 @@ func (se *Ep) InitGoogle(map[string]interface{}) {
 	se.Misc = map[string]interface{}{
 		"weight":        30,
 		"glue":          ` ; ¶ ; `,
-		"splitGlue":     ` ?; ¶ ?; ?`,
+		"splitGlue":     `\s?;\s¶\s?;\s?`,
 		"googleRegexes": map[string]string{`,+`: `,`, `\[,`: `[`},
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
 
 	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
-		"googleL": "http://translate.google.com",
-		"google":  "http://translate.google.com/translate_a/single",
+		"googleL": "https://translate.google.com",
+		"google":  "https://translate.google.com/translate_a/single",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
@@ -292,13 +294,12 @@ func (se *Ep) InitGoogle(map[string]interface{}) {
 	se.PreReq = func(pinput i.Pinput) (qinput t.SMII, order t.MISI) {
 		// cookies
 		se.GenC("googleL")
-		qinput, order = se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
+		qinput, order = se.Txtrq.Pt(pinput, se.Misc["glue"].(string), se.Limit, &se.Name)
 		return
 	}
 	se.GetLangs = func() map[string]string {
 		// regex
-		re := regexp.MustCompile(`value=([a-z]{2,3}(\-[A-Z]{2,4})?)>`)
-
+		re := regexp.MustCompile(`{code:\s?\s?'([a-z]{2,3}(\-[A-Z]{2,4})?)'`)
 		// request
 		str := se.RetReqs(nil, "string", "GET", "googleL", map[int]*grequests.RequestOptions{}).([]string)[0]
 		matches_a := re.FindAllStringSubmatch(str, -1)

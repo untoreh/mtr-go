@@ -19,6 +19,57 @@ The binary has no flags atm, so just run it
 ```bash
 ./mtr
 ```
+### Client
+`GET /` request:
+```http
+// query params
+sl=sourceLanguage
+tl=targetLanguage
+q=textToTranslate
+sv=serviceToUse
+```
+response:
+```
+"translatedText"
+```
+
+`POST /` request:
+```http
+// query params
+sl=sourceLanguage
+tl=targetLanguage
+sv=serviceToUse
+
+// body json encoded
+{"index": "textToTranslate"}
+```
+response:
+```
+"translatedText"
+```
+
+`POST /multi` request (one source language to multiple target languages):
+```
+http
+// query params
+sl=sourceLanguage
+sv=serviceToUse
+
+// body json encoded
+{
+    "mtl": [ "targetLanguage1", "targetLanguage2", ... ],
+    "text": "textToTranslate"
+}
+```
+response:
+```
+{
+  "targetLanguage1" : "translatedText1"
+  "targetLanguage2" : "translatedText2"
+  ...
+}
+```
+
 ## Package
 For using directly into code
 

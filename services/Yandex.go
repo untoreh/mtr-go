@@ -5,14 +5,16 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitYandex(map[string]interface{}) {
 	se.Name = "yandex"
+	se.Limit = 500
+	se.Txtrq.SetRegex(&se.Name, se.Limit)
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -141,7 +143,7 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 				log.Print("Yandex preparation failed")
 			}
 		}
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string), se.Limit, &se.Name)
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"log"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitFrengly(map[string]interface{}) {
 	se.Name = "frengly"
+	se.Limit = 1000
+	se.Txtrq.SetRegex(&se.Name, se.Limit)
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -29,7 +31,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 	// urls
 	mergo.Merge(&se.UrlStr, map[string]string{
 		"frengly":   "http://www.frengly.com/frengly/data/translate/",
-		"frenglyL":  "http://www.frengly.com/translate",
+		"frenglyL":  "http://www.frengly.com/",
 		"frenglyL2": "http://www.frengly.com/frengly/static/langs.json",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
@@ -104,8 +106,10 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		req := *(items["req"].(*grequests.RequestOptions))
 		newreq = req
 		newreq.JSON = map[string]string{
-			"srcLang":  items["source"].(string),
-			"destLang": items["target"].(string),
+			"email":    "ui@frengly.com",
+			"password": "PlsDontBanMe",
+			"src":      items["source"].(string),
+			"dest":     items["target"].(string),
 			"text":     data,
 		}
 		return
@@ -127,8 +131,10 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 						CookieJar:    se.CookieJar,
 						UseCookieJar: true,
 						JSON: map[string]string{
-							"srcLang":  "en",
-							"destLang": "es",
+							"email":    "ui@frengly.com",
+							"password": "PlsDontBanMe",
+							"src":      "en",
+							"dest":     "es",
 							"text":     "Hello.",
 						}},
 				})
@@ -138,7 +144,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 				se.CookEx.Unlock()
 			}
 		}
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string), se.Limit, &se.Name)
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

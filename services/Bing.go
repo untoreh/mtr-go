@@ -1,17 +1,18 @@
 package services
 
 import (
-	"encoding/json"
 	"regexp"
 
+	"github.com/imdario/mergo"
 	"github.com/levigross/grequests"
-	"github.com/untoreh/mergo"
 	"github.com/untoreh/mtr-go/i"
 	t "github.com/untoreh/mtr-go/tools"
 )
 
 func (se *Ep) InitBing(map[string]interface{}) {
 	se.Name = "bing"
+	se.Limit = 1000
+	se.Txtrq.SetRegex(&se.Name, se.Limit)
 
 	// setup cache keys
 	se.Cak = map[string]string{}
@@ -30,7 +31,7 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	// urls, the url map is shared because names are diverse
 	mergo.Merge(&se.UrlStr, map[string]string{
 		"bingL": "http://www.bing.com/translator/",
-		"bing":  "http://www.bing.com/translator/api/Translate/TranslateArray",
+		"bing":  "https://www.bing.com/ttranslate",
 	})
 	se.Urls = t.ParseUrls(se.UrlStr)
 
@@ -42,7 +43,7 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		"Accept-Language":  "en-US,en;q=0.5",
 		"Accept-Encoding":  "*",
 		"Referer":          "https://www.bing.com/translator/",
-		"Content-Type":     "application/json; charset=utf-8",
+		"Content-Type":     "application/x-www-form-urlencoded",
 		"X-Requested-With": "XMLHttpRequest",
 	}
 	// copy the default request
@@ -61,9 +62,7 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	}
 
 	type respJson struct {
-		Items []struct {
-			Text string
-		}
+		TranslationResponse string
 	}
 
 	se.Translate = func(source string, target string, pinput i.Pinput) i.Pinput {
@@ -82,21 +81,22 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		}
 
 		// setup custom keys
-		reqSrv := se.MkReq(source, target)
+		reqSrv := se.MkReq("", "")
 
-		reqSrv.Params = map[string]string{}
-		reqSrv.Params["from"] = source
-		reqSrv.Params["to"] = target
+		reqSrv.Data = map[string]string{
+			"from": source,
+			"to":   target,
+		}
 
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
-
+		// runtime.Breakpoint()
 		// do the requests through channels
 		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "bing", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
 		for k := range sl_rej {
-			translation[k] = sl_rej[k].(*respJson).Items[0].Text
+			translation[k] = sl_rej[k].(*respJson).TranslationResponse
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
@@ -106,14 +106,17 @@ func (se *Ep) InitBing(map[string]interface{}) {
 	}
 	se.GenReq = func(items map[string]interface{}) (newreq grequests.RequestOptions) {
 		data := *(items["data"].(*string))
+
 		newreq = *(items["req"].(*grequests.RequestOptions))
-		newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text": data}})
+		newreq.Data["text"] = data
+		// newreq.JSON, _ = json.Marshal([]map[string]interface{}{{"text": data}})
 		return
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// cookies
 		se.GenC("bingL")
-		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string))
+		// runtime.Breakpoint()
+		qinput, order := se.Txtrq.Pt(pinput, se.Misc["glue"].(string), se.Limit, &se.Name)
 		return qinput, order
 	}
 	se.GetLangs = func() map[string]string {

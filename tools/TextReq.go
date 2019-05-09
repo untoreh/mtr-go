@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -8,6 +10,7 @@ import (
 
 type TextReq struct {
 	RgxMain *regexp.Regexp
+	Rgx     map[string]*regexp.Regexp
 }
 
 // struct needs points to be assigned directly (with [k] = v instead of {k:v}
@@ -23,12 +26,12 @@ type MISI map[I][]I
 // is not really worth the effort since requests are split and unordered anyway. The fact
 // that it returns different values means that requests for the same map of strings can vary up to
 // n * sumof(input[k])
-func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
+func (txtrq *TextReq) Pt(input map[string]*string, glue string, limit int, service *string) (SMII, MISI) {
 	// arr_input contains single string or array of strings
 	//var arr_input strar
 	arr_input := SMII{}
 	order := MISI{}
-	// parts keeps the strings below 1024 to join in 1 req
+	// parts keeps the strings below limit (1024) to join in 1 req
 	var parts SI
 	// chars keeps the characters count between multiple items
 	// p counts the input index
@@ -36,14 +39,14 @@ func (txtrq *TextReq) Pt(input map[string]*string, glue string) (SMII, MISI) {
 	chars, p := 0, 0
 	for key, str := range input {
 		strl := utf8.RuneCountInString(*str)
-		if strl > 1024 {
+		if strl > limit {
 			initSI(&arr_input, p)
 			order[p] = append(order[p], key)
 			// SplitP accepts a pointer
-			arr_input[p][key] = txtrq.SplitP(input[key])
+			arr_input[p][key] = txtrq.SplitP(input[key], service)
 			p++
 			//runtime.Breakpoint()
-		} else if chars+strl > 1024 {
+		} else if chars+strl > limit {
 			initSI(&arr_input, p)
 			for _, kp := range parts {
 				order[p] = append(order[p], kp)
@@ -112,16 +115,28 @@ func (txtrq *TextReq) initRegex() {
 	//	"\\n",
 	//	"",
 	//})
-	txtrq.RgxMain = regexp.MustCompile(`(?m:[\S\s]{1,1000}([.;:,!?]|\z)[\s]?)`)
+	txtrq.Rgx = map[string]*regexp.Regexp{}
+	txtrq.Rgx["main"] = regexp.MustCompile(`(?m:[\S\s]{1,1000}([.;:,!?]|\z)[\s]?)`)
 }
 
-func (txtrq *TextReq) SplitP(str *string) []string {
-	matches_a := txtrq.RgxMain.FindAllStringSubmatch(*str, -1)
-	matches_s := make([]string, len(matches_a))
-	for k, v := range matches_a {
-		matches_s[k] = strings.Join(v, "")
+func (txtrq *TextReq) SetRegex(service *string, limit int) {
+	// txtrq.Rgx[service] = regexp.MustCompile(`(?m:[\S\s]{1,`+limit+`}([.;:,!?]|\z)[\s]?)`)
+	rgx := fmt.Sprintf(`(?m:[\S\s]{1,%d}([.;:,!?]|\z)[\s]?)`, limit)
+	txtrq.Rgx[*service] = regexp.MustCompile(rgx)
+}
+
+func (txtrq *TextReq) SplitP(str *string, service *string) []string {
+	if _, ok := txtrq.Rgx[*service]; ok {
+		matches_a := txtrq.Rgx[*service].FindAllStringSubmatch(*str, -1)
+		matches_s := make([]string, len(matches_a))
+		for k, v := range matches_a {
+			matches_s[k] = strings.Join(v, "")
+		}
+		return matches_s
+	} else {
+		log.Panic("Regex for chosen service is not defined.")
+		return []string{}
 	}
-	return matches_s
 }
 
 func NewTextReq() *TextReq {
