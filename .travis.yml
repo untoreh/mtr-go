@@ -1,6 +1,6 @@
 language: go
 go:
-- 1.8
+- 1.12.x
 before_install:
 - mkdir -p $GOPATH/bin $GOPATH/src
 install:
@@ -17,8 +17,8 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: WZuy8ii6I9Lok8Bh/+ATLjWiGMAjL4kBqtOIRCWP2JHC83XC8ZPd3IpLYV0ZBOc6Zvcgva/EkPj5t60Pjot01fWHGva1qUppE8gSi8lXpUkljZKvQjgIZAcYNcvYuQ9tp1kxz1EpwwNXjzNINB/Szd5KzECAx9gVeKzXAv5c/dytge17lSh3vXJxlPBYCy+6gpdaCKAaEel2NdBlSwZPL/iZra+whBSKXubGtZVdbb1hMHYrzzj3/E+IUFoR2ghrFa487Fzp6AU/gfR30f/VhXwDfQzbGDkL8kyQTaS9cXxOP7pB7Z3sKL1QeeIwYj5YZ9pDfkdbvvAPhxtB6YnA29F4f21rKvR5HJCDTQ8KW4TPPDm6EdS8ALPJKQgmVIcjdbcCykker9zsKRU2x3FvjREGrSf6/LNUcyDLz2VOtdvlCd8rTShiXjpVK0QIKtwc+TMHwdegljOV8bnMQBdRrTf2DmdxH+oDOSvTTtGe0fQO/DhOjyto7jroGJXAj6zXoqjNCSGqbNVMUQYK0SiU4eLizp0XedujAguPpfJhFwoKQgNiKCcFUWmjlhASXYCWJgHSRzfm5qNxoiPVWWhTWlvBejGbelJMrrWdDKjiFfqmoIKdnCC4RYOEQ0Eu5AjPfCNHjEulPwAQF7P8E3BrhvrKu2H1hvFS8+Qq5Q9kitA=
-  file: mtr-${TRAVIS_TAG}.tar.gz
+    secure: oq6pox/rJcOELGxfTyV+UrZ57M4fegNiDsjYVwDyPXl8DCtuKXnZjvQNNFzx+z0rf3pp3cMfnvQR+LCLRM2ta9gw+SYDHkwW1RBq/UKFwAR49BfJAS7HAaZ+ZyCd45bh7SR06kwt9HLpd3Bh0aKJWWrSmnLUiSuGNwoCy6nwPhe4jG7eW8CBEF/6BfQr5/kM180d5S+7I8tWT2HKpTS0JwGJyJ+aBl+BVpl6tNyNCtHBzkTO1RpCDyfaVs0z6OxIKPUs018vXbxW5u8DCgrhQMm/9ICLcm4+legrChuIc2rbLitDVOZkZptUzWhcwanJKUsOjg2UvjwiBsEkxKL7FRaYc8t8TPQEemOnTmsPk8v05V//uLXiUICGpwpwPnoJxqpRnlFL2BnYS72VtyvPVgDtzIOroxz6lIQR+pgz2WNCV3BXZFNHv6621YFgkqjD8CBIve1k7CpejhbZ4/vc7SKFwqnETlfXZCZ50Ma5yecf7givZUnSimYbxM/7ULAP5E/ie1L4QZ3a5e2/2DSrDEpXThXg3sKGyBzNnWEXNuuaqZmMgLskYBVLFc8gZa4Kj/YJ+kc7iwSseJ8lbbSRFtDlGJIdqJJctPK9VeZKjhQM6etBMlawx0OYAaOleT6GGSas/Dmq3R/8PT3tD1VtsylzDCOIw+o92VMzpNYxzMs=
+  file: mtr-go.tar.gz
   on:
     repo: untoreh/mtr-go
     tags: true
