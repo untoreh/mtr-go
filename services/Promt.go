@@ -95,6 +95,9 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 		}
 
 		// setup custom keys
+		if source == "" || source == "auto" {
+			source = "au"
+		}
 		reqSrv := se.MkReq(source, target)
 
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)

@@ -42,7 +42,8 @@ type Ep struct {
 	GetLangs  func() map[string]string
 }
 
-func (ep *Ep) epInit() *Ep {
+func (ep *Ep) init() *Ep {
+	t.Cache.Init()
 	ep.Txtrq = t.NewTextReq()
 	ep.epDefaults()
 	return ep
@@ -96,6 +97,7 @@ func (ep *Ep) GenC(serviceL string) bool {
 	})
 	ep.Req.Cookies = ep.CookieJar.Cookies(ep.Urls[serviceL])
 	t.Cache.Set(ep.Cak["cookies"], ep.CookieJar.Cookies(ep.Urls[serviceL]), ep.ttl())
+	t.Cache.Save()
 	ep.CookEx.Unlock()
 	return true
 }
@@ -239,33 +241,49 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 		dst := make([][]byte, l)
 		for range reqs {
 			kr := <-cr
-			dst[kr.K] = kr.O.Bytes()
-			kr.O.Close()
+			if kr.O != nil {
+				dst[kr.K] = kr.O.Bytes()
+				kr.O.Close()
+			} else {
+				log.Print("Empty response for request.")
+			}
 		}
 		return dst
 	case "string":
 		dst := make([]string, l)
 		for range reqs {
 			kr := <-cr
-			dst[kr.K] = kr.O.String()
-			kr.O.Close()
+			if kr.O != nil {
+				dst[kr.K] = kr.O.String()
+				kr.O.Close()
+			} else {
+				log.Print("Empty response for request.")
+			}
 		}
 		return dst
 	case "json":
 		dstSl := make([]interface{}, l)
 		for range reqs {
 			kr := <-cr
-			if err := kr.O.JSON(dst); err != nil {
-				log.Print(err)
+			if kr.O != nil {
+				if err := kr.O.JSON(dst); err != nil {
+					log.Print(err)
+				}
+				kr.O.Close()
+				dstSl[kr.K] = dst
+			} else {
+				log.Print("Empty response for request.")
 			}
-			kr.O.Close()
-			dstSl[kr.K] = dst
 		}
 		return dstSl
 	default:
 		for range reqs {
 			kr := <-cr
-			kr.O.Close()
+			if kr.O != nil {
+				kr.O.Close()
+			} else {
+				log.Print("Kr couldn't be closed because response is empty.")
+			}
 		}
 		return nil
 	}
@@ -273,7 +291,7 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 
 func (ep *Ep) reqResponse(verb string, urlstr string, reqo *grequests.RequestOptions, k int, c chan kr) {
 	for ret := 0; ret < 5; ret++ {
-		if resp, err := grequests.Req(verb, ep.UrlStr[urlstr], reqo); t.Ck(err) && resp.StatusCode == 200 {
+		if resp, err := grequests.Req(verb, ep.UrlStr[urlstr], reqo); t.Ck(err) && (resp.StatusCode == 200 || resp.StatusCode == 400) {
 			// convert to json struct
 			c <- kr{k, resp}
 			return
@@ -297,4 +315,4 @@ func (ep *Ep) options(options *grequests.RequestOptions) *grequests.RequestOptio
 	return options
 }
 
-var GEp = new(Ep).epInit()
+var GEp = new(Ep).init()

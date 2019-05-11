@@ -80,6 +80,9 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		}
 
 		// setup custom keys
+		if source == "" {
+			source = "auto"
+		}
 		reqSrv := se.MkReq(source, target)
 
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)

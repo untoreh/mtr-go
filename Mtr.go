@@ -141,13 +141,16 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 	}
 	if srvLangs, found = tools.Cache.Get(mtr.srv[srv].Cak["langs"]); !found {
 		srvLangs = mtr.srv[srv].GetLangs()
+		srvLangs := srvLangs.(map[string]string)
+		srvLangs["auto"] = "auto"
 		tools.Cache.Set(mtr.srv[srv].Cak["langs"], srvLangs, -1)
 	}
 	cLang := ""
 	langts = map[string]string{}
+	langtsMap := langts.(map[string]string)
 	for _, l := range srvLangs.(map[string]string) {
 		c := mtr.Lc.Convert(l)
-		langts.(map[string]string)[c] = l
+		langtsMap[c] = l
 		if lang == c {
 			cLang = l
 		}
@@ -168,6 +171,7 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 // slc : the language code used by the service for the iso639/google code
 func (mtr *Mtr) LangMatrix() {
 	if fetch, found := tools.Cache.Get("mtr_matrix"); !found {
+		mtr.matrix["auto"] = map[string]string{}
 		for name, obj := range mtr.srv {
 			log.Printf("matrix for service: %s", name)
 			if obj.Active == true {
@@ -177,6 +181,7 @@ func (mtr *Mtr) LangMatrix() {
 					}
 					mtr.matrix[mtr.Lc.Convert(l)][name] = l
 				}
+				mtr.matrix["auto"][name] = "auto"
 			}
 		}
 		tools.Cache.Set("mtr_matrix", mtr.matrix, -1)

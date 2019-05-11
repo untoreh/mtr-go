@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	mtr_go "github.com/untoreh/mtr-go"
+	"github.com/untoreh/mtr-go/tools"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
 			// "sdl",
 		},
 	})
+	tools.Cache.Save()
 
 	// Routes consist of a path and a handler function.
 	r := mux.NewRouter()
