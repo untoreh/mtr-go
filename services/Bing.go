@@ -76,17 +76,13 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		} else {
 			return nil
 		}
-		if source == "auto" {
-			source = "-"
-		}
 
 		// setup custom keys
 		reqSrv := se.MkReq("", "")
-
 		reqSrv.Data = map[string]string{
-			"from": source,
-			"to":   target,
+			"to": target,
 		}
+		reqSrv.Data["from"] = source
 
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 		// runtime.Breakpoint()

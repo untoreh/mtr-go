@@ -57,7 +57,8 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 	}
 	query := map[string]string{
 		"srv":    "tr-text",
-		"reason": "paste",
+		"reason": "auto",
+		"id":     "a0c6e3bd.5cd6575c.b3f8873e-20-0",
 	}
 	// copy the default request
 	tmpreq := se.Req
@@ -71,8 +72,14 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		// assign requestOption to a new var to pass by value to map
 		reqV := grequests.RequestOptions{}
 		reqV.Params = map[string]string{}
-		reqV.Params["lang"] = source + "-" + target
-		reqV.Params["id"] = se.Misc["yandexId"].(string)
+		if source == "auto" || source == "" {
+			reqV.Params["lang"] = target
+		} else {
+			reqV.Params["lang"] = source + "-" + target
+		}
+		if se.Misc["yandexId"] != nil {
+			reqV.Params["id"] = se.Misc["yandexId"].(string)
+		}
 		mergo.Merge(&reqV, se.Req)
 		return &reqV
 	}
@@ -104,7 +111,11 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
 		for k, rej := range sl_rej {
-			translation[k] = rej.(*respJson).Text[0]
+			if rej != nil {
+				if len(rej.(*respJson).Text) != 0 {
+					translation[k] = rej.(*respJson).Text[0]
+				}
+			}
 		}
 
 		// split the strings to match the input, translated is a map of pointers to strings
@@ -125,20 +136,22 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 	}
 	se.PreReq = func(pinput i.Pinput) (t.SMII, t.MISI) {
 		// id
-		if _, ok := se.Misc["yandexId"]; !ok {
+		if _, ok := se.Misc["yandexId"]; !ok || se.Misc["yandexId"] == "" {
 			matches1 := regexp.MustCompile(`SID: '.*`).
 				FindAllStringSubmatch(
 					se.RetReqs(nil, "string", "GET", "yandex1", nil).([]string)[0], -1)
-			sid := regexp.MustCompile(`SID: '(.*)'`).
-				FindAllStringSubmatch(matches1[0][0], -1)[0]
-			sidSp := strings.Split(sid[1], ".")
-			sidRev := make([]string, len(sidSp))
-			for k, s := range sidSp {
-				sidRev[k] = t.Reverse(s)
-			}
-			if len(sidRev) > 0 {
-				se.Misc["yandexId"] = strings.Join(sidRev, ".") + "-0-0"
-				t.Cache.Set("yandex_id", se.Misc["yandexId"], se.ttl())
+			if len(matches1) != 0 {
+				sid := regexp.MustCompile(`SID: '(.*)'`).
+					FindAllStringSubmatch(matches1[0][0], -1)[0]
+				sidSp := strings.Split(sid[1], ".")
+				sidRev := make([]string, len(sidSp))
+				for k, s := range sidSp {
+					sidRev[k] = t.Reverse(s)
+				}
+				if len(sidRev) > 0 {
+					se.Misc["yandexId"] = strings.Join(sidRev, ".") + "-0-0"
+					t.Cache.Set("yandex_id", se.Misc["yandexId"], se.ttl())
+				}
 			} else {
 				log.Print("Yandex preparation failed")
 			}

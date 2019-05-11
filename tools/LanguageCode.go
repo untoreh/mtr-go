@@ -5,6 +5,22 @@ import (
 )
 
 var Langs = map[string]map[string]string{
+	"auto": map[string]string{
+		"name":       "auto",
+		"native":     "auto",
+		"iso639-1":   "auto",
+		"iso639-2/t": "auto",
+		"iso639-2/b": "auto",
+		"iso639-3":   "auto",
+		// "bing": "auto", // only from api
+		"yandex": "auto",
+		"google": "auto",
+		// "multillect": "auto", // only from api
+		"frengly": "auto",
+		"sdl":     "auto",
+		"systran": "auto",
+		"promt":   "auto",
+	},
 	"ab": map[string]string{
 		"name":       "abkhaz",
 		"native":     "аҧсуа бызшәа, аҧсшәа",
@@ -1620,7 +1636,7 @@ search:
 		}
 	}
 
-	if index == "" && value != "emj" { // don't care about emojis...
+	if index == "" && value != "emj" && value != "-" { // don't care about emojis...
 		log.Print("Language code " + value + " not found.")
 	}
 
