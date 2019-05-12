@@ -103,7 +103,7 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "promt", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "POST", "promt", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
@@ -154,6 +154,7 @@ func (se *Ep) InitPromt(map[string]interface{}) {
 		for _, l := range reL {
 			langs[l[1]] = l[1]
 		}
+		langs["auto"] = "auto"
 		return langs
 	}
 }

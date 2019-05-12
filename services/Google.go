@@ -32,7 +32,7 @@ func (se *Ep) InitGoogle(map[string]interface{}) {
 	se.Misc = map[string]interface{}{
 		"weight":        30,
 		"glue":          ` ; ¶ ; `,
-		"splitGlue":     `\s?;\s¶\s?;\s?`,
+		"splitGlue":     `\s?;\s?(¶|\s)?\s?;?\s?`,
 		"googleRegexes": map[string]string{`,+`: `,`, `\[,`: `[`},
 	}
 	mergo.Merge(&se.Misc, tmpmisc)
@@ -256,6 +256,8 @@ func (se *Ep) InitGoogle(map[string]interface{}) {
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
+		// spew.Dump(requests[0].Data)
+		// spew.Dump(requests[1].Data)
 		le := len(requests)
 		sl_rej := se.RetReqs(nil, "bytes", "POST", "google", requests).([][]byte)
 
@@ -311,6 +313,7 @@ func (se *Ep) InitGoogle(map[string]interface{}) {
 				langs[group[1]] = group[1]
 			}
 		}
+		langs["auto"] = "auto"
 		return langs
 	}
 

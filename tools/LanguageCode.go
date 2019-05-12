@@ -12,14 +12,6 @@ var Langs = map[string]map[string]string{
 		"iso639-2/t": "auto",
 		"iso639-2/b": "auto",
 		"iso639-3":   "auto",
-		// "bing": "auto", // only from api
-		"yandex": "auto",
-		"google": "auto",
-		// "multillect": "auto", // only from api
-		"frengly": "auto",
-		"sdl":     "auto",
-		"systran": "auto",
-		"promt":   "auto",
 	},
 	"ab": map[string]string{
 		"name":       "abkhaz",

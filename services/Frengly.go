@@ -80,14 +80,14 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		}
 
 		// setup custom keys
-		if source == "" {
-			source = "auto"
-		}
+		// if source == "" {
+		// 	source = "auto"
+		// }
 		reqSrv := se.MkReq(source, target)
 
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "frengly", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "POST", "frengly", requests).([]interface{})
 
 		translation := make([]string, len(sl_rej))
 		mw := bytes.NewBufferString("")
@@ -155,7 +155,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 		type jl struct {
 			List map[string]string
 		}
-		jlv := se.RetReqs(&jl{}, "json", "GET", "frenglyL2", map[int]*grequests.RequestOptions{}).([]interface{})[0].(*jl)
+		jlv := se.RetReqs(jl{}, "json", "GET", "frenglyL2", map[int]*grequests.RequestOptions{}).([]interface{})[0].(*jl)
 		if jlv == nil {
 			log.Print("Failed to retrieve frengly langs")
 			return nil
@@ -168,6 +168,7 @@ func (se *Ep) InitFrengly(map[string]interface{}) {
 				langs[l] = l
 			}
 		}
+		langs["auto"] = "auto"
 		return langs
 	}
 }

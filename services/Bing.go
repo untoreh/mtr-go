@@ -87,7 +87,7 @@ func (se *Ep) InitBing(map[string]interface{}) {
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 		// runtime.Breakpoint()
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "bing", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "POST", "bing", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))

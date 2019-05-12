@@ -66,7 +66,7 @@ func (ep *Ep) epDefaults() {
 	}
 	ep.Misc = map[string]interface{}{
 		"glue":      ` ; ; `,
-		"splitGlue": `/\s*;\s*;\s*/`,
+		"splitGlue": `\s*;\s*;\s*`,
 		"timeout":   t.Seconds(60),
 		"sleep":     t.Seconds(1),
 	}
@@ -206,6 +206,10 @@ func (ep *Ep) JoinTranslated(str_ar []interface{}, input interface{}, translatio
 			expl := ep.sp_string(translation.([]string)[str_p], glue)
 			str_p++
 
+			if len(expl.([]string)) < len(k.([]t.I)) {
+				log.Print("Warning: splitting of translated text could have failed.")
+				return nil
+			}
 			c := 0
 			for _, kk := range k.([]t.I) {
 				translated[kk.(string)] = &expl.([]string)[c]
@@ -242,8 +246,8 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 		for range reqs {
 			kr := <-cr
 			if kr.O != nil {
+				defer kr.O.Close()
 				dst[kr.K] = kr.O.Bytes()
-				kr.O.Close()
 			} else {
 				log.Print("Empty response for request.")
 			}
@@ -255,7 +259,7 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 			kr := <-cr
 			if kr.O != nil {
 				dst[kr.K] = kr.O.String()
-				kr.O.Close()
+				defer kr.O.Close()
 			} else {
 				log.Print("Empty response for request.")
 			}
@@ -263,14 +267,16 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 		return dst
 	case "json":
 		dstSl := make([]interface{}, l)
+		dstType := reflect.TypeOf(dst)
 		for range reqs {
 			kr := <-cr
 			if kr.O != nil {
-				if err := kr.O.JSON(dst); err != nil {
+				newdst := reflect.New(dstType.(reflect.Type)).Interface()
+				dstSl[kr.K] = newdst
+				defer kr.O.Close()
+				if err := kr.O.JSON(&dstSl[kr.K]); err != nil {
 					log.Print(err)
 				}
-				kr.O.Close()
-				dstSl[kr.K] = dst
 			} else {
 				log.Print("Empty response for request.")
 			}
@@ -280,7 +286,7 @@ func (ep *Ep) RetReqs(dst interface{}, tp string, verb string, url string, reqs 
 		for range reqs {
 			kr := <-cr
 			if kr.O != nil {
-				kr.O.Close()
+				defer kr.O.Close()
 			} else {
 				log.Print("Kr couldn't be closed because response is empty.")
 			}

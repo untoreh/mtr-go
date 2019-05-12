@@ -102,11 +102,10 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 
 		// setup custom keys
 		reqSrv := se.MkReq(source, target)
-
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "POST", "yandex2", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "POST", "yandex2", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
@@ -172,8 +171,8 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 			Dirs  []string
 			Langs map[string]string
 		}
-		jlv := se.RetReqs(&jl{}, "json", "GET", "yandexL", map[int]*grequests.RequestOptions{
-			0: lReq}).([]interface{})[0].(*jl)
+		jlv := se.RetReqs(jl{}, "json", "GET", "yandexL", map[int]*grequests.RequestOptions{
+			0: lReq}).([]interface{})[0].(interface{})
 		if jlv == nil {
 			log.Print("Failed to retrieve yandex langs")
 			return nil
@@ -181,13 +180,15 @@ func (se *Ep) InitYandex(map[string]interface{}) {
 		// delete the key from the referenced params map
 		delete(lReq.Params, "ui")
 
+		jlvl := jlv.(*jl)
 		// loop through langs
 		langs := map[string]string{}
-		for l := range jlv.Langs {
+		for l := range jlvl.Langs {
 			if _, ok := langs[l]; !ok {
 				langs[l] = l
 			}
 		}
+		langs["auto"] = "auto"
 		return langs
 	}
 }

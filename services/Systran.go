@@ -105,7 +105,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "GET", "systran", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "GET", "systran", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))
@@ -146,7 +146,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 			params["key"] = se.Req.Params["key"]
 		}
 		params["target"] = "en"
-		jso := se.RetReqs(&mjso{}, "json", "GET", "systranL", map[int]*grequests.RequestOptions{
+		jso := se.RetReqs(mjso{}, "json", "GET", "systranL", map[int]*grequests.RequestOptions{
 			0: {
 				Headers: se.Req.Headers,
 				Params:  params,
@@ -163,6 +163,7 @@ func (se *Ep) InitSystran(options map[string]interface{}) {
 		}
 		// add en
 		langs["en"] = "en"
+		langs["auto"] = "auto"
 		return langs
 	}
 }

@@ -84,7 +84,7 @@ func (se *Ep) InitMultillect(map[string]interface{}) {
 		requests, str_ar := se.GenQ(source, target, qinput, order, se.GenReq, reqSrv)
 
 		// do the requests through channels
-		sl_rej := se.RetReqs(&respJson{}, "json", "GET", "multillect", requests).([]interface{})
+		sl_rej := se.RetReqs(respJson{}, "json", "GET", "multillect", requests).([]interface{})
 
 		// loop through the responses selecting the translated string
 		translation := make([]string, len(sl_rej))

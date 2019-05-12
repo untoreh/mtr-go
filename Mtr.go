@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/cookiejar"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -142,7 +143,6 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 	if srvLangs, found = tools.Cache.Get(mtr.srv[srv].Cak["langs"]); !found {
 		srvLangs = mtr.srv[srv].GetLangs()
 		srvLangs := srvLangs.(map[string]string)
-		srvLangs["auto"] = "auto"
 		tools.Cache.Set(mtr.srv[srv].Cak["langs"], srvLangs, -1)
 	}
 	cLang := ""
@@ -171,7 +171,6 @@ func (mtr *Mtr) LangToSrv(lang string, srv string) string {
 // slc : the language code used by the service for the iso639/google code
 func (mtr *Mtr) LangMatrix() {
 	if fetch, found := tools.Cache.Get("mtr_matrix"); !found {
-		mtr.matrix["auto"] = map[string]string{}
 		for name, obj := range mtr.srv {
 			log.Printf("matrix for service: %s", name)
 			if obj.Active == true {
@@ -181,7 +180,6 @@ func (mtr *Mtr) LangMatrix() {
 					}
 					mtr.matrix[mtr.Lc.Convert(l)][name] = l
 				}
-				mtr.matrix["auto"][name] = "auto"
 			}
 		}
 		tools.Cache.Set("mtr_matrix", mtr.matrix, -1)
@@ -368,8 +366,17 @@ func (mtr *MtrPost) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	decoder := json.NewDecoder(r.Body)
-	var data map[string]string
+	var data interface{}
+	dataMap := map[string]string{}
 	err := decoder.Decode(&data)
+	switch data.(type) {
+	case map[string]string:
+	case []string:
+		for k, s := range data.([]string) {
+			dataMap[strconv.Itoa(k)] = s
+		}
+
+	}
 	if err != nil {
 		log.Print("couldn't decode POST request")
 		log.Print(err)
